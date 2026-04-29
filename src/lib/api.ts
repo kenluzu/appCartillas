@@ -99,20 +99,12 @@ export const api = {
     cartilla?: Cartilla;
     retiro?: Retiro | null;
   }> {
-    await delay();
-    const usuario = usuarios.get(cedula);
-    if (!usuario || usuario.rol === "admin") return { encontrado: false };
-
-    let cartilla = cartillaDe(usuario.id);
-    if (!cartilla) {
-      const id = nextId();
-      cartilla = { id, usuario_id: usuario.id, puntos: 0, estado: "activa", fecha_inicio: new Date().toISOString().slice(0, 10) };
-      cartillas.set(id, cartilla);
+    const res = await fetch(`/api/usuarios?cedula=${encodeURIComponent(cedula)}`);
+    if (!res.ok) {
+      const { error } = await res.json() as { error: string };
+      throw new Error(error ?? "Error al consultar");
     }
-
-    const retiro = cartilla.estado === "completa" ? retiroDe(cartilla.id) ?? null : null;
-    const { usuario_id: _, ...cartillaOut } = cartilla;
-    return { encontrado: true, usuario, cartilla: cartillaOut, retiro: retiro ?? null };
+    return res.json() as Promise<{ encontrado: boolean; usuario?: Usuario; cartilla?: Cartilla; retiro?: Retiro | null }>;
   },
 
   async registrarUsuario(data: { cedula: string; nombre: string; apellido: string; telefono: string }): Promise<{ usuario: Usuario; cartilla: Cartilla }> {
