@@ -58,14 +58,14 @@ export function ConfirmacionRetiro() {
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button
-              onClick={() => navigate("redencion")}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+              onClick={() => navigate("planificacion")}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-xl transition-colors cursor-pointer"
             >
               Modificar
             </button>
             <button
               onClick={() => navigate("ingreso")}
-              className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+              className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors cursor-pointer"
             >
               Ir al inicio
             </button>

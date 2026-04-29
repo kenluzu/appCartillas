@@ -7,7 +7,7 @@ declare const L: any;
 
 type FarmaciaConDistancia = Farmacia & { distancia?: number };
 
-export function Redencion() {
+export function PlanificacionRetiro() {
   const { cartilla, retiro, navigate, setRetiro } = useApp();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -64,7 +64,7 @@ export function Redencion() {
 
     const center = ubicacion
       ? [ubicacion.lat, ubicacion.lng]
-      : [cercanas[0].latitud, cercanas[0].longitud];
+      : [cercanas[0]!.latitud, cercanas[0]!.longitud];
 
     const map = L.map(mapRef.current).setView(center, 13);
     mapInstanceRef.current = map;
@@ -111,14 +111,14 @@ export function Redencion() {
     setError("");
     try {
       if (esModificacion && retiro) {
-        const updated = await api.modificarRedencion(retiro.id, {
+        const updated = await api.updatePlan(retiro.id, {
           farmacia_id: farmaciaSeleccionada,
           fecha_retiro: fecha,
           hora_retiro: hora,
         });
         setRetiro(updated);
       } else {
-        const nuevo = await api.crearRedencion({
+        const nuevo = await api.createPlan({
           cartilla_id: cartilla!.id,
           farmacia_id: farmaciaSeleccionada,
           fecha_retiro: fecha,
@@ -138,7 +138,7 @@ export function Redencion() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 px-4 py-8">
       <div className="max-w-xl mx-auto space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate("cartilla")} className="text-gray-500 hover:text-gray-700 text-sm">
+          <button onClick={() => navigate("cartilla")} className="text-gray-500 hover:text-gray-700 text-sm cursor-pointer">
             ← Volver
           </button>
           <h2 className="text-xl font-bold text-gray-800">
@@ -176,7 +176,7 @@ export function Redencion() {
                     onClick={() => !sinStock && setFarmaciaSeleccionada(f.id)}
                     className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all
                       ${sinStock ? "opacity-50 cursor-not-allowed border-gray-200 bg-gray-50" :
-                        seleccionada ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-gray-300"}`}
+                        seleccionada ? "cursor-pointer border-green-500 bg-green-50" : "cursor-pointer border-gray-200 hover:border-gray-300"}`}
                   >
                     <div className="flex justify-between items-center">
                       <div>
@@ -239,7 +239,7 @@ export function Redencion() {
         <button
           onClick={handleSubmit}
           disabled={cargando}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold py-3.5 rounded-xl transition-colors"
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold py-3.5 rounded-xl transition-colors cursor-pointer"
         >
           {cargando
             ? "Procesando..."

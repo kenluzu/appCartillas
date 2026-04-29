@@ -38,7 +38,7 @@ export function AdminLogin() {
         {/* Back link */}
         <button
           onClick={() => navigate("ingreso")}
-          className="text-gray-400 hover:text-gray-600 text-sm mb-8 block transition-colors duration-200 group"
+          className="text-gray-400 hover:text-gray-600 text-sm mb-8 block transition-colors duration-200 group cursor-pointer"
         >
           <span className="group-hover:-translate-x-0.5 inline-block transition-transform duration-200">←</span> Volver al inicio
         </button>
@@ -91,7 +91,7 @@ export function AdminLogin() {
             <button
               type="submit"
               disabled={cargando}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-[0_1px_2px_rgba(37,99,235,0.15)] hover:shadow-[0_2px_8px_rgba(37,99,235,0.2)] active:scale-[0.98]"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-[0_1px_2px_rgba(37,99,235,0.15)] hover:shadow-[0_2px_8px_rgba(37,99,235,0.2)] active:scale-[0.98] cursor-pointer"
             >
               {cargando ? (
                 <span className="flex items-center justify-center gap-2">

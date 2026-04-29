@@ -219,7 +219,7 @@ export function AdminPanel() {
             </div>
             <button
               onClick={logout}
-              className="text-gray-400 hover:text-red-500 text-sm transition-colors duration-200 p-1.5 rounded-lg hover:bg-red-50"
+              className="text-gray-400 hover:text-red-500 text-sm transition-colors duration-200 p-1.5 rounded-lg hover:bg-red-50 cursor-pointer"
               title="Cerrar sesión"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -235,7 +235,7 @@ export function AdminPanel() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200 rounded-t-lg
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200 rounded-t-lg cursor-pointer
                 ${tab === t.key
                   ? "border-blue-500 text-blue-600 bg-blue-50/50"
                   : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50/80"}`}
@@ -309,7 +309,7 @@ export function AdminPanel() {
               </div>
               <button
                 onClick={descargarExcel}
-                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl ring-1 ring-gray-200 transition-all duration-200 whitespace-nowrap"
+                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl ring-1 ring-gray-200 transition-all duration-200 whitespace-nowrap cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -400,7 +400,7 @@ export function AdminPanel() {
                   <button
                     onClick={() => handleGuardarStock(f.id)}
                     disabled={cargando}
-                    className="ml-auto bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all duration-200 shadow-[0_1px_2px_rgba(37,99,235,0.1)] hover:shadow-[0_2px_6px_rgba(37,99,235,0.15)] active:scale-[0.98]"
+                    className="ml-auto bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all duration-200 shadow-[0_1px_2px_rgba(37,99,235,0.1)] hover:shadow-[0_2px_6px_rgba(37,99,235,0.15)] active:scale-[0.98] cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -467,7 +467,7 @@ export function AdminPanel() {
                       <button
                         onClick={() => handleEntregar(r.id)}
                         disabled={cargando}
-                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-200 shadow-[0_1px_2px_rgba(16,185,129,0.15)] hover:shadow-[0_2px_6px_rgba(16,185,129,0.2)] active:scale-[0.98]"
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-200 shadow-[0_1px_2px_rgba(16,185,129,0.15)] hover:shadow-[0_2px_6px_rgba(16,185,129,0.2)] active:scale-[0.98] cursor-pointer"
                       >
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />

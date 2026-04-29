@@ -5,7 +5,7 @@ export type Page =
   | "ingreso"
   | "registro"
   | "cartilla"
-  | "redencion"
+  | "planificacion"
   | "confirmacion"
   | "admin-login"
   | "admin-panel";

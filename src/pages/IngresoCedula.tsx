@@ -67,7 +67,7 @@ export function IngresoCedula() {
           <button
             type="submit"
             disabled={cargando || cedula.trim().length === 0}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg transition-colors cursor-pointer"
           >
             {cargando ? "Consultando..." : "Ingresar"}
           </button>
@@ -76,7 +76,7 @@ export function IngresoCedula() {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate("admin-login")}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             Administrador
           </button>

@@ -59,7 +59,7 @@ const usuarios = new Map<string, StoredUsuario>([
   ["1234567890", { id: 1, cedula: "1234567890", nombre: "Juan Carlos",  apellido: "Pérez López",    telefono: "0991234567", rol: "usuario" }],
   ["0987654321", { id: 2, cedula: "0987654321", nombre: "María Elena",  apellido: "García Torres",  telefono: "0987654321", rol: "usuario" }],
   ["1122334455", { id: 3, cedula: "1122334455", nombre: "Carlos",       apellido: "Rodríguez Vega", telefono: "0995551234", rol: "usuario" }],
-  ["admin",      { id: 99, cedula: "admin",     nombre: "Administrador",apellido: "Sistema",        telefono: "0000000000", rol: "admin", password: "123" }],
+  ["123",      { id: 99, cedula: "123",     nombre: "Administrador",apellido: "Sistema",        telefono: "0000000000", rol: "admin", password: "123" }],
 ]);
 
 const cartillas = new Map<number, StoredCartilla>([
@@ -136,7 +136,7 @@ export const api = {
     return [...FARMACIAS];
   },
 
-  async crearRedencion(data: { cartilla_id: number; farmacia_id: number; fecha_retiro: string; hora_retiro: string }): Promise<Retiro> {
+  async createPlan(data: { cartilla_id: number; farmacia_id: number; fecha_retiro: string; hora_retiro: string }): Promise<Retiro> {
     await delay();
     const cartilla = cartillas.get(data.cartilla_id);
     if (!cartilla) throw new Error("Cartilla no encontrada");
@@ -161,7 +161,7 @@ export const api = {
     return retiro;
   },
 
-  async modificarRedencion(id: number, data: { farmacia_id: number; fecha_retiro: string; hora_retiro: string }): Promise<Retiro> {
+  async updatePlan(id: number, data: { farmacia_id: number; fecha_retiro: string; hora_retiro: string }): Promise<Retiro> {
     await delay();
     const retiro = retiros.get(id);
     if (!retiro) throw new Error("Retiro no encontrado");

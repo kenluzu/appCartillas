@@ -44,7 +44,7 @@ export function Registro() {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
         <button
           onClick={() => navigate("ingreso")}
-          className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm mb-6 transition-colors"
+          className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm mb-6 transition-colors cursor-pointer"
         >
           ← Volver
         </button>
@@ -100,7 +100,7 @@ export function Registro() {
           <button
             type="submit"
             disabled={cargando}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg transition-colors cursor-pointer"
           >
             {cargando ? "Registrando..." : "Registrarme y ver mi cartilla"}
           </button>
