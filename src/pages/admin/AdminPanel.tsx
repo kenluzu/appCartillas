@@ -278,12 +278,12 @@ export function AdminPanel() {
               return (
                 <div
                   key={s.label}
-                  className={`bg-white rounded-2xl p-5 ring-1 ${colors.ring} animate-fade-in-up stagger-${i + 1}`}
+                  className={`bg-white rounded-2xl p-5 ring-1 ${colors!.ring} animate-fade-in-up stagger-${i + 1}`}
                 >
-                  <div className={`w-9 h-9 rounded-xl ${colors.bg} flex items-center justify-center mb-3`}>
-                    <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`}></div>
+                  <div className={`w-9 h-9 rounded-xl ${colors!.bg} flex items-center justify-center mb-3`}>
+                    <div className={`w-2.5 h-2.5 rounded-full ${colors!.dot}`}></div>
                   </div>
-                  <p className={`text-3xl font-display font-bold ${colors.text} tracking-tight`}>{s.value}</p>
+                  <p className={`text-3xl font-display font-bold ${colors!.text} tracking-tight`}>{s.value}</p>
                   <p className="text-xs text-gray-400 mt-1.5 font-medium leading-tight">{s.label}</p>
                 </div>
               );
