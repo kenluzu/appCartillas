@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { api } from "../lib/api";
 
 export function IngresoCedula() {
   const { navigate, setUsuario, setCartilla, setRetiro, setCedulaPendiente } = useApp();
@@ -16,18 +15,23 @@ export function IngresoCedula() {
     setCargando(true);
     setError("");
     try {
-      const res = await api.buscarUsuario(ced);
-      if (!res.encontrado) {
+      const res = await fetch(`/api/usuarios/validar?cedula=${encodeURIComponent(ced)}`);
+      const data = await res.json() as Record<string, unknown>;
+
+      if (res.status === 404) {
         setCedulaPendiente(ced);
         navigate("registro");
-      } else {
-        setUsuario(res.usuario!);
-        setCartilla(res.cartilla!);
-        setRetiro(res.retiro ?? null);
+      } else if (res.ok) {
+        const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string };
+        setUsuario(usuario);
+        setCartilla({ id: 0, puntos: 0, estado: "activa", fecha_inicio: new Date().toISOString().slice(0, 10) });
+        setRetiro(null);
         navigate("cartilla");
+      } else {
+        throw new Error((data.error as string | undefined) ?? "Error al consultar");
       }
     } catch (e: any) {
-      setError(e.message ?? "Error al consultar");
+      setError(e.message ?? "Error de red al consultar");
     } finally {
       setCargando(false);
     }
