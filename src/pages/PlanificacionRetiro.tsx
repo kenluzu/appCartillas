@@ -69,9 +69,7 @@ export function PlanificacionRetiro() {
     const map = L.map(mapRef.current).setView(center, 13);
     mapInstanceRef.current = map;
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-    }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {}).addTo(map);
 
     if (ubicacion) {
       L.circleMarker([ubicacion.lat, ubicacion.lng], {

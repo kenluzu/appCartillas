@@ -39,11 +39,11 @@ export type Retiro = {
 // ─── Datos de demostración ────────────────────────────────────────────────────
 
 const FARMACIAS: Farmacia[] = [
-  { id: 1, nombre: "El Paraiso",   direccion: "Av. Amazonas N24-33 y Colón", latitud: -2.1397603, longitud: -79.8798885, cantidad: 5 },
-  { id: 2, nombre: "El Batán",   direccion: "Av. 6 de Diciembre N36-109", latitud: -2.15535337, longitud: -79.8658869, cantidad: 3 },
-  { id: 3, nombre: "DUran El Recreo",        direccion: "Av. Naciones Unidas y Amazonas", latitud: -2.16953526, longitud: -79.851385, cantidad: 0 },
-  { id: 4, nombre: "Farmacorp Entrada de la 8", direccion: "Av. Diego de Vásquez y Machala",  latitud: -0.1051, longitud: -78.4942, cantidad: 8 },
-  { id: 5, nombre: "Farmacorp La Carolina",direccion: "Av. Eloy Alfaro N32-650 y Portugal",  latitud: -0.1618, longitud: -78.4823, cantidad: 2 },
+  { id: 1, nombre: "El Paraiso", direccion: "Av. Amazonas N24-33 y Colón", latitud: -2.1397603, longitud: -79.8798885, cantidad: 5 },
+  { id: 2, nombre: "El Batán", direccion: "Av. 6 de Diciembre N36-109", latitud: -2.15535337, longitud: -79.8658869, cantidad: 3 },
+  { id: 3, nombre: "Duran El Recreo", direccion: "Av. Naciones Unidas y Amazonas", latitud: -2.16953526, longitud: -79.851385, cantidad: 0 },
+  { id: 4, nombre: "Entrada de la 8", direccion: "Av. Diego de Vásquez y Machala",  latitud: -0.1051, longitud: -78.4942, cantidad: 8 },
+  { id: 5, nombre: "La Carolina",direccion: "Av. Eloy Alfaro N32-650 y Portugal",  latitud: -0.1618, longitud: -78.4823, cantidad: 2 },
 ];
 
 // ─── Store en memoria (persiste durante la sesión) ────────────────────────────
