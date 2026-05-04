@@ -11,6 +11,22 @@ export const CartillaRepository = {
       .getOne();
   },
 
+  async buscarActivasPorUsuarios(usuarioIds: number[]): Promise<Map<number, Cartilla>> {
+    if (usuarioIds.length === 0) return new Map();
+    const cartillas = await AppDataSource.getRepository(Cartilla)
+      .createQueryBuilder("c")
+      .where("c.usuario_id IN (:...ids)", { ids: usuarioIds })
+      .andWhere("c.estado != :cerrada", { cerrada: "cerrada" })
+      .orderBy("c.id", "DESC")
+      .getMany();
+
+    const map = new Map<number, Cartilla>();
+    for (const c of cartillas) {
+      if (!map.has(c.usuario_id)) map.set(c.usuario_id, c);
+    }
+    return map;
+  },
+
   async crearCartilla(usuarioId: number): Promise<Cartilla> {
     const repo = AppDataSource.getRepository(Cartilla);
     const cartilla = repo.create({

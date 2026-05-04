@@ -82,7 +82,7 @@ export function Paginacion({ paginaActual, totalPaginas, total, limite, onChange
         </button>
       </div>
 
-      <p className="text-xs text-gray-400 whitespace-nowrap">
+      <p className="text-sm text-white whitespace-nowrap">
         Mostrando {total === 0 ? 0 : desde}–{hasta} de {total} usuarios
       </p>
     </div>

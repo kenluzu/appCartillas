@@ -221,28 +221,39 @@ export function AdminPanel() {
 
   return (
     <div className="min-h-screen">
+      <div className="fixed inset-0 backdrop-blur-md bg-white/30 pointer-events-none z-0" />
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="px-4 py-3.5 flex justify-between items-center">
-          <div>
-            <h1 className="font-display text-xl text-gray-900 tracking-tight">Panel de administración</h1>
+      <header className="sticky top-0 z-10" style={{ background: "linear-gradient(135deg, #060118 0%, #05002c 50%, #05004e 100%)" }}>
+        {/* Top bar */}
+        <div className="px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl" style={{ background: "rgba(255,255,255,0.12)" }}>
+              🏆
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-none">Panel de administración</h1>
+              <p className="text-white text-xs mt-0.5 font-medium tracking-wide uppercase">Ponte la 10 · Farmcorp</p>
+            </div>
           </div>
+
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-gray-700">{adminNombre}</p>
-              <p className="text-xs text-gray-400">Administrador</p>
+              <p className="text-base font-semibold text-white">{adminNombre}</p>
+              <p className="text-xs text-green-300">Administrador</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center ring-1 ring-blue-100">
-              <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-green-900 text-sm"
+              style={{ background: "linear-gradient(135deg, #fbbf24, #f59e0b)" }}>
+              {adminNombre?.charAt(0) ?? "A"}
             </div>
             <button
               onClick={logout}
-              className="text-gray-400 hover:text-red-500 text-sm transition-colors duration-200 p-1.5 rounded-lg hover:bg-red-50 cursor-pointer"
               title="Cerrar sesión"
+              className="p-2 rounded-lg transition-all duration-200 cursor-pointer"
+              style={{ background: "rgba(255,255,255,0.08)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.01)")}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-5 h-5 text-green-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
               </svg>
             </button>
@@ -250,15 +261,15 @@ export function AdminPanel() {
         </div>
 
         {/* Tabs */}
-        <div className="px-4 flex gap-1 overflow-x-auto pb-0">
+        <div className="px-6 flex gap-0.5 overflow-x-auto" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
           {tabs.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200 rounded-t-lg cursor-pointer
+              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-200 cursor-pointer
                 ${tab === t.key
-                  ? "border-blue-500 text-blue-600 bg-blue-50/50"
-                  : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50/80"}`}
+                  ? "border-yellow-400 text-yellow-300"
+                  : "border-transparent text-white hover:text-white hover:border-green-500"}`}
             >
               {t.icon}
               {t.label}
@@ -289,7 +300,7 @@ export function AdminPanel() {
       )}
 
       {/* Content */}
-      <main className="p-4 max-w-5xl mx-auto">
+      <main className="relative z-10 p-4 max-w-5xl mx-auto">
         {/* ── Estadísticas ── */}
         {tab === "estadisticas" && stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -303,8 +314,8 @@ export function AdminPanel() {
                   <div className={`w-9 h-9 rounded-xl ${colors!.bg} flex items-center justify-center mb-3`}>
                     <div className={`w-2.5 h-2.5 rounded-full ${colors!.dot}`}></div>
                   </div>
-                  <p className={`text-3xl font-display font-bold ${colors!.text} tracking-tight`}>{s.value}</p>
-                  <p className="text-xs text-gray-400 mt-1.5 font-medium leading-tight">{s.label}</p>
+                  <p className={`text-4xl font-display font-bold ${colors!.text} tracking-tight`}>{s.value}</p>
+                  <p className="text-sm text-gray-500 mt-2 font-medium leading-tight">{s.label}</p>
                 </div>
               );
             })}
@@ -325,12 +336,12 @@ export function AdminPanel() {
                   value={busqueda}
                   onChange={e => setBusqueda(e.target.value)}
                   disabled={cargandoUsuarios}
-                  className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 placeholder:text-gray-300 disabled:bg-gray-50 disabled:text-gray-400"
+                  className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200 placeholder:text-gray-300 disabled:bg-gray-50 disabled:text-gray-400"
                 />
               </div>
               <button
                 onClick={descargarExcel}
-                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl ring-1 ring-gray-200 transition-all duration-200 whitespace-nowrap cursor-pointer"
+                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 text-base font-semibold px-5 py-3 rounded-xl ring-1 ring-gray-200 transition-all duration-200 whitespace-nowrap cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -341,33 +352,33 @@ export function AdminPanel() {
 
             <div className="bg-white rounded-2xl ring-1 ring-gray-100 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-base">
                   <thead className="bg-gray-50/80">
                     <tr>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cédula</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Nombre</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Teléfono</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Puntos</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado</th>
+                      <th className="text-left px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Cédula</th>
+                      <th className="text-left px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Nombre</th>
+                      <th className="text-left px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Teléfono</th>
+                      <th className="text-left px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Puntos</th>
+                      <th className="text-left px-5 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Estado</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {cargandoUsuarios ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-12 text-center text-gray-300 text-sm">
+                        <td colSpan={5} className="px-5 py-14 text-center text-gray-300 text-base">
                           Cargando...
                         </td>
                       </tr>
                     ) : errorUsuarios ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-12 text-center text-red-400 text-sm">
+                        <td colSpan={5} className="px-5 py-14 text-center text-red-400 text-base">
                           {errorUsuarios}
                         </td>
                       </tr>
                     ) : usuarios.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-12 text-center text-gray-300 text-sm">
-                          <svg className="w-8 h-8 mx-auto mb-2 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <td colSpan={5} className="px-5 py-14 text-center text-gray-300 text-base">
+                          <svg className="w-10 h-10 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.95 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                           </svg>
                           No se encontraron usuarios
@@ -376,16 +387,39 @@ export function AdminPanel() {
                     ) : (
                       usuarios.map(u => (
                         <tr key={u.id} className="hover:bg-gray-50/50 transition-colors duration-150">
-                          <td className="px-4 py-3 font-mono text-xs text-gray-500">{u.cedula}</td>
-                          <td className="px-4 py-3 font-medium text-gray-800">{u.nombre} {u.apellido}</td>
-                          <td className="px-4 py-3 text-gray-400">{u.telefono}</td>
-                          <td className="px-4 py-3">
-                            {/* TODO: join con tabla cartillas */}
-                            <span className="text-gray-300">—</span>
+                          <td className="px-5 py-4 font-mono text-sm text-gray-500">{u.cedula}</td>
+                          <td className="px-5 py-4 font-semibold text-gray-800">{u.nombre} {u.apellido}</td>
+                          <td className="px-5 py-4 text-gray-500">{u.telefono}</td>
+                          <td className="px-5 py-4">
+                            {u.puntos != null ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="font-bold text-gray-800">{u.puntos}</span>
+                                <span className="text-gray-400 text-sm">/ 20</span>
+                                <div className="w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-green-500"
+                                    style={{ width: `${Math.min(100, (u.puntos / 20) * 100)}%` }}
+                                  />
+                                </div>
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
                           </td>
-                          <td className="px-4 py-3">
-                            {/* TODO: join con tabla cartillas */}
-                            <span className="text-gray-300">—</span>
+                          <td className="px-5 py-4">
+                            {u.cartilla_estado ? (
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                                u.cartilla_estado === "completa"
+                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  : u.cartilla_estado === "cerrada"
+                                  ? "bg-gray-100 text-gray-500"
+                                  : "bg-green-50 text-green-700 ring-1 ring-green-200"
+                              }`}>
+                                {u.cartilla_estado === "activa" ? "Activa" : u.cartilla_estado === "completa" ? "Completa" : "Cerrada"}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -416,8 +450,8 @@ export function AdminPanel() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <p className="font-semibold text-gray-800">{f.nombre}</p>
-                    <p className="text-sm text-gray-400 mt-0.5">{f.direccion}</p>
+                    <p className="text-lg font-semibold text-gray-800">{f.nombre}</p>
+                    <p className="text-base text-gray-400 mt-0.5">{f.direccion}</p>
                   </div>
                   <div className={`px-3 py-1 rounded-lg text-xs font-semibold ${f.cantidad > 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
                     {f.cantidad} unidades
@@ -465,17 +499,17 @@ export function AdminPanel() {
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-gray-800 truncate">
+                      <p className="text-lg font-semibold text-gray-800 truncate">
                         {r.usuario_nombre} {r.usuario_apellido}
                       </p>
                       {r.estado === "planificado" && (
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold ring-1 ring-blue-100">
+                        <span className="shrink-0 text-sm px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold ring-1 ring-blue-100">
                           Pendiente
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 font-mono">{r.cedula} · {r.telefono}</p>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-gray-500">
+                    <p className="text-sm text-gray-400 font-mono">{r.cedula} · {r.telefono}</p>
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-base text-gray-500">
                       <span className="flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
