@@ -132,54 +132,31 @@ export const api = {
   },
 
   async getFarmacias(): Promise<Farmacia[]> {
-    await delay(200);
-    return [...FARMACIAS];
+    const res = await fetch("/api/usuarios/farmacias");
+    if (!res.ok) throw new Error("Error al cargar farmacias");
+    return res.json();
   },
 
   async createPlan(data: { cartilla_id: number; farmacia_id: number; fecha_retiro: string; hora_retiro: string }): Promise<Retiro> {
-    await delay();
-    const cartilla = cartillas.get(data.cartilla_id);
-    if (!cartilla) throw new Error("Cartilla no encontrada");
-    if (cartilla.estado !== "completa") throw new Error("La cartilla no está completa");
-    if (retiroDe(data.cartilla_id)) throw new Error("Ya existe un retiro planificado para esta cartilla");
-
-    const farmacia = farmaciaById(data.farmacia_id);
-    if (farmacia.cantidad <= 0) throw new Error("Sin stock en esa farmacia");
-
-    const id = nextId();
-    const retiro: StoredRetiro = {
-      id,
-      cartilla_id: data.cartilla_id,
-      farmacia_id: data.farmacia_id,
-      farmacia_nombre: farmacia.nombre,
-      farmacia_direccion: farmacia.direccion,
-      fecha_retiro: data.fecha_retiro,
-      hora_retiro: `${data.hora_retiro}:00`,
-      estado: "planificado",
-    };
-    retiros.set(id, retiro);
-    return retiro;
+    const res = await fetch("/api/usuarios/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? "Error al guardar el retiro");
+    return json as Retiro;
   },
 
   async updatePlan(id: number, data: { farmacia_id: number; fecha_retiro: string; hora_retiro: string }): Promise<Retiro> {
-    await delay();
-    const retiro = retiros.get(id);
-    if (!retiro) throw new Error("Retiro no encontrado");
-    if (retiro.estado === "entregado") throw new Error("El premio ya fue entregado, no se puede modificar");
-
-    const farmacia = farmaciaById(data.farmacia_id);
-    if (farmacia.cantidad <= 0) throw new Error("Sin stock en esa farmacia");
-
-    const updated: StoredRetiro = {
-      ...retiro,
-      farmacia_id: data.farmacia_id,
-      farmacia_nombre: farmacia.nombre,
-      farmacia_direccion: farmacia.direccion,
-      fecha_retiro: data.fecha_retiro,
-      hora_retiro: `${data.hora_retiro}:00`,
-    };
-    retiros.set(id, updated);
-    return updated;
+    const res = await fetch(`/api/usuarios/plan/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? "Error al actualizar el retiro");
+    return json as Retiro;
   },
 
   async adminLogin(cedula: string, password: string): Promise<{ token: string; nombre: string }> {
@@ -191,17 +168,20 @@ export const api = {
     return { token: "mock-admin-token", nombre: admin.nombre };
   },
 
-  async adminEstadisticas() {
-    await delay(200);
-    const todos = [...cartillas.values()];
-    return {
-      total_usuarios:      [...usuarios.values()].filter(u => u.rol === "usuario").length,
-      cartillas_activas:   todos.filter(c => c.estado === "activa").length,
-      cartillas_completas: todos.filter(c => c.estado === "completa").length,
-      cartillas_cerradas:  todos.filter(c => c.estado === "cerrada").length,
-      premios_entregados:  [...retiros.values()].filter(r => r.estado === "entregado").length,
-      retiros_pendientes:  [...retiros.values()].filter(r => r.estado === "planificado").length,
-    };
+  async adminEstadisticas(token: string): Promise<{
+    total_usuarios: number;
+    cartillas_activas: number;
+    cartillas_completas: number;
+    cartillas_cerradas: number;
+    premios_entregados: number;
+    retiros_pendientes: number;
+  }> {
+    const res = await fetch("/api/admin/estadisticas", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401 || res.status === 403) throw new Error("UNAUTHORIZED");
+    if (!res.ok) throw new Error("Error al cargar estadísticas");
+    return res.json();
   },
 
   async adminUsuarios(): Promise<{

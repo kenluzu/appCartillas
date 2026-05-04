@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 
 export function AdminLogin() {
-  const { navigate, setAdminNombre } = useApp();
+  const { setAdminNombre } = useApp();
+  const navigate = useNavigate();
   const [form, setForm] = useState({ cedula: "", password: "" });
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -23,7 +25,7 @@ export function AdminLogin() {
       if (!res.ok) throw new Error(data.error ?? "Credenciales inválidas");
       localStorage.setItem("admin_token", data.token);
       setAdminNombre(data.nombre);
-      navigate("admin-panel");
+      navigate("/admin/panel");
     } catch (e: any) {
       setError(e.message ?? "Credenciales inválidas");
     } finally {
@@ -42,8 +44,8 @@ export function AdminLogin() {
       <div className="w-full max-w-sm relative animate-fade-in-up">
         {/* Back link */}
         <button
-          onClick={() => navigate("ingreso")}
-          className="text-gray-400 hover:text-gray-600 text-sm mb-8 block transition-colors duration-200 group cursor-pointer"
+          onClick={() => navigate("/")}
+          className="text-white hover:text-gray-200 text-sm mb-8 block transition-colors duration-200 group cursor-pointer"
         >
           <span className="group-hover:-translate-x-0.5 inline-block transition-transform duration-200">←</span> Volver al inicio
         </button>

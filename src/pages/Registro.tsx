@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 
 export function Registro() {
-  const { navigate, setUsuario, setCartilla, setRetiro, cedulaPendiente } = useApp();
+  const { setUsuario, setCartilla, setRetiro, cedulaPendiente } = useApp();
+  const navigate = useNavigate();
   const [form, setForm] = useState({ nombre: "", apellido: "", telefono: "" });
   const [erroresCampo, setErroresCampo] = useState({ nombre: "", apellido: "", telefono: "" });
   const [errorGlobal, setErrorGlobal] = useState("");
@@ -46,7 +48,7 @@ export function Registro() {
         setUsuario(data);
         setCartilla(data.cartilla);
         setRetiro(null);
-        navigate("cartilla");
+        navigate("/cartilla");
       } else if (res.status === 409) {
         setErrorGlobal("Esta cédula ya está registrada");
       } else {
@@ -63,7 +65,7 @@ export function Registro() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
         <button
-          onClick={() => navigate("ingreso")}
+          onClick={() => navigate("/")}
           className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm mb-6 transition-colors cursor-pointer"
         >
           ← Volver

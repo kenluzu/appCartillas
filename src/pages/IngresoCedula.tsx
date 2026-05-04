@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
+import type { Retiro } from "../lib/api";
 
 export function IngresoCedula() {
-  const { navigate, setUsuario, setCartilla, setRetiro, setCedulaPendiente } = useApp();
+  const { setUsuario, setCartilla, setRetiro, setCedulaPendiente } = useApp();
+  const navigate = useNavigate();
   const [cedula, setCedula] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -20,14 +23,14 @@ export function IngresoCedula() {
 
       if (res.status === 404) {
         setCedulaPendiente(ced);
-        navigate("registro");
+        navigate("/registro");
       } else if (res.ok) {
         const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string };
         const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
         setUsuario(usuario);
         setCartilla(cartilla);
-        setRetiro(null);
-        navigate("cartilla");
+        setRetiro((data.retiro as Retiro | null) ?? null);
+        navigate("/cartilla");
       } else {
         throw new Error((data.error as string | undefined) ?? "Error al consultar");
       }
@@ -42,7 +45,6 @@ export function IngresoCedula() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
         <div className="text-center mb-8">
-         {/*<div className="text-5xl mb-3">👕</div>*/}
           <h1 className="text-2xl font-bold text-gray-800">¡Ponte la 10!</h1>
           <p className="text-gray-500 text-sm mt-1">Únete a nuestro programa y gana camisetas gratis</p>
         </div>
@@ -80,7 +82,7 @@ export function IngresoCedula() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => navigate("admin-login")}
+            onClick={() => navigate("/admin")}
             className="text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             Administrador

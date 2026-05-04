@@ -27,6 +27,10 @@ export const CartillaRepository = {
     return map;
   },
 
+  async buscarPorId(id: number): Promise<Cartilla | null> {
+    return AppDataSource.getRepository(Cartilla).findOneBy({ id });
+  },
+
   async crearCartilla(usuarioId: number): Promise<Cartilla> {
     const repo = AppDataSource.getRepository(Cartilla);
     const cartilla = repo.create({

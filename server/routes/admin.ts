@@ -4,6 +4,9 @@ import { compareSync } from "bcrypt-ts";
 import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
 import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
+import { AppDataSource } from "../data-source";
+import { Usuario } from "../entities/Usuario";
+import { Cartilla } from "../entities/Cartilla";
 
 export const routerAdmin = Router();
 
@@ -45,6 +48,44 @@ routerAdmin.post("/login", async (req: Request, res: Response) => {
 
 // ── Rutas protegidas ───────────────────────────────────────────────────────────
 routerAdmin.use(authMiddleware);
+
+type EstadisticasResponse = {
+  total_usuarios: number;
+  cartillas_activas: number;
+  cartillas_completas: number;
+  cartillas_cerradas: number;
+  premios_entregados: number;
+  retiros_pendientes: number;
+};
+
+routerAdmin.get("/estadisticas", async (_req: Request, res: Response) => {
+  try {
+    const usuarioRepo = AppDataSource.getRepository(Usuario);
+    const cartillaRepo = AppDataSource.getRepository(Cartilla);
+
+    const [total_usuarios, cartillas_activas, cartillas_completas, cartillas_cerradas] =
+      await Promise.all([
+        usuarioRepo.createQueryBuilder("u").where("u.rol != :admin", { admin: "ADMIN" }).getCount(),
+        cartillaRepo.count({ where: { estado: "activa" } }),
+        cartillaRepo.count({ where: { estado: "completa" } }),
+        cartillaRepo.count({ where: { estado: "cerrada" } }),
+      ]);
+
+    const result: EstadisticasResponse = {
+      total_usuarios,
+      cartillas_activas,
+      cartillas_completas,
+      cartillas_cerradas,
+      premios_entregados: 0, // TODO: requiere tabla retiros con estado='entregado'
+      retiros_pendientes: 0, // TODO: requiere tabla retiros con estado='planificado'
+    };
+
+    res.json(result);
+  } catch (err) {
+    console.error("[admin/estadisticas] Error:", err);
+    res.status(500).json({ error: "Error al obtener estadísticas" });
+  }
+});
 
 routerAdmin.get("/usuarios", async (req: Request, res: Response) => {
   const pagina   = Math.max(1, parseInt((req.query.pagina as string) ?? "1") || 1);

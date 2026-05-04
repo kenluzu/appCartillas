@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { api, haversine, type Farmacia } from "../lib/api";
 import location1Svg from "../assets/location1.svg";
@@ -8,7 +9,8 @@ declare const L: any;
 type FarmaciaConDistancia = Farmacia & { distancia?: number };
 
 export function PlanificacionRetiro() {
-  const { cartilla, retiro, navigate, setRetiro } = useApp();
+  const { cartilla, retiro, setRetiro } = useApp();
+  const navigate = useNavigate();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -124,7 +126,7 @@ export function PlanificacionRetiro() {
         });
         setRetiro(nuevo);
       }
-      navigate("confirmacion");
+      navigate("/confirmacion");
     } catch (e: any) {
       setError(e.message ?? "Error al procesar");
     } finally {
@@ -136,10 +138,10 @@ export function PlanificacionRetiro() {
     <div className="min-h-screen px-4 py-8">
       <div className="max-w-xl mx-auto space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate("cartilla")} className="text-gray-500 hover:text-gray-700 text-sm cursor-pointer">
+          <button onClick={() => navigate("/cartilla")} className="text-white hover:text-gray-300 text-sm cursor-pointer">
             ← Volver
           </button>
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-white">
             {esModificacion ? "Modificar retiro" : "Planificar retiro"}
           </h2>
         </div>

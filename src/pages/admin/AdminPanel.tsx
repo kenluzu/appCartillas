@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Paginacion } from "../../components/Paginacion";
 import * as XLSX from "xlsx";
 import { useApp } from "../../context/AppContext";
@@ -48,13 +49,16 @@ function authHeaders(): HeadersInit {
 }
 
 export function AdminPanel() {
-  const { adminNombre, navigate, setAdminNombre } = useApp();
+  const { adminNombre, setAdminNombre } = useApp();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("estadisticas");
   const [stats, setStats] = useState<Stats | null>(null);
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
   const [stockEdit, setStockEdit] = useState<Record<number, string>>({});
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [statsError, setStatsError] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -66,12 +70,13 @@ export function AdminPanel() {
 
   function handleUnauthorized() {
     localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_nombre");
     setAdminNombre(null);
-    navigate("admin-login");
+    navigate("/admin");
   }
 
   useEffect(() => {
-    if (!getToken()) navigate("admin-login");
+    if (!getToken()) navigate("/admin");
   }, []);
 
   useEffect(() => {
@@ -88,7 +93,18 @@ export function AdminPanel() {
   }, [busqueda]);
 
   async function loadStats() {
-    try { setStats(await api.adminEstadisticas()); } catch { logout(); }
+    const token = getToken();
+    if (!token) { logout(); return; }
+    setLoadingStats(true);
+    setStatsError(false);
+    try {
+      setStats(await api.adminEstadisticas(token));
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "UNAUTHORIZED") { logout(); return; }
+      setStatsError(true);
+    } finally {
+      setLoadingStats(false);
+    }
   }
 
   async function loadUsuarios(pagina: number = 1, busq: string = busqueda) {
@@ -128,8 +144,9 @@ export function AdminPanel() {
 
   function logout() {
     localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_nombre");
     setAdminNombre(null);
-    navigate("admin-login");
+    navigate("/admin");
   }
 
   async function handleEntregar(id: number) {
@@ -215,14 +232,14 @@ export function AdminPanel() {
     },
   ];
 
-  const statCards = stats ? [
-    { label: "Usuarios registrados", value: stats.total_usuarios, accent: "blue" },
-    { label: "Cartillas activas", value: stats.cartillas_activas, accent: "emerald" },
-    { label: "Cartillas completas", value: stats.cartillas_completas, accent: "amber" },
-    { label: "Cartillas cerradas", value: stats.cartillas_cerradas, accent: "slate" },
-    { label: "Premios entregados", value: stats.premios_entregados, accent: "emerald" },
-    { label: "Retiros pendientes", value: stats.retiros_pendientes, accent: "orange" },
-  ] : [];
+  const statCards = [
+    { label: "Usuarios registrados", value: stats?.total_usuarios,       accent: "blue" },
+    { label: "Cartillas activas",    value: stats?.cartillas_activas,    accent: "emerald" },
+    { label: "Cartillas completas",  value: stats?.cartillas_completas,  accent: "amber" },
+    { label: "Cartillas cerradas",   value: stats?.cartillas_cerradas,   accent: "slate" },
+    { label: "Premios entregados",   value: stats?.premios_entregados,   accent: "emerald" },
+    { label: "Retiros pendientes",   value: stats?.retiros_pendientes,   accent: "orange" },
+  ];
 
   const accentMap: Record<string, { bg: string; text: string; ring: string; dot: string }> = {
     blue: { bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-100", dot: "bg-blue-500" },
@@ -315,19 +332,22 @@ export function AdminPanel() {
       {/* Content */}
       <main className="relative z-10 p-4 max-w-5xl mx-auto">
         {/* ── Estadísticas ── */}
-        {tab === "estadisticas" && stats && (
+        {tab === "estadisticas" && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {statCards.map((s, i) => {
-              const colors = accentMap[s.accent];
+              const colors = accentMap[s.accent]!;
+              const display = loadingStats ? "…" : statsError ? "—" : (s.value ?? "—");
               return (
                 <div
                   key={s.label}
-                  className={`bg-white rounded-2xl p-5 ring-1 ${colors!.ring} animate-fade-in-up stagger-${i + 1}`}
+                  className={`bg-white rounded-2xl p-5 ring-1 ${colors.ring} animate-fade-in-up stagger-${i + 1}`}
                 >
-                  <div className={`w-9 h-9 rounded-xl ${colors!.bg} flex items-center justify-center mb-3`}>
-                    <div className={`w-2.5 h-2.5 rounded-full ${colors!.dot}`}></div>
+                  <div className={`w-9 h-9 rounded-xl ${colors.bg} flex items-center justify-center mb-3`}>
+                    <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`}></div>
                   </div>
-                  <p className={`text-4xl font-display font-bold ${colors!.text} tracking-tight`}>{s.value}</p>
+                  <p className={`text-4xl font-display font-bold tracking-tight ${loadingStats ? "text-gray-300" : colors.text}`}>
+                    {display}
+                  </p>
                   <p className="text-sm text-gray-500 mt-2 font-medium leading-tight">{s.label}</p>
                 </div>
               );

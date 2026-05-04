@@ -47,8 +47,9 @@ export const UsuarioRepository = {
         .getManyAndCount();
       return { datos, total };
     }
-
+    // Busqueda usuarios solo consumidores
     const [datos, total] = await repo.findAndCount({
+      where: { rol: "consumer" }, // no case sensitive
       order: { cedula: "ASC" },
       skip,
       take: limite,

@@ -2,6 +2,8 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import { Usuario } from "./entities/Usuario";
 import { Cartilla } from "./entities/Cartilla";
+import { PlanRetiro } from "./entities/PlanRetiro";
+import { Farmacia } from "./entities/Farmacia";
 
 export const AppDataSource = new DataSource({
   type: "mssql",
@@ -10,7 +12,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER ?? "sa",
   password: process.env.DB_PASSWORD ?? "codeFather2000!",
   database: process.env.DB_NAME ?? "dbCartillas",
-  entities: [Usuario, Cartilla],
+  entities: [Usuario, Cartilla, PlanRetiro, Farmacia],
   synchronize: false,
   logging: process.env.NODE_ENV !== "production",
   options: {

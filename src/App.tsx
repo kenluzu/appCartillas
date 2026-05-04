@@ -1,4 +1,6 @@
-import { AppProvider, useApp } from "./context/AppContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AppProvider } from "./context/AppContext";
+import { PrivateUserRoute, PrivateAdminRoute } from "./router/PrivateRoutes";
 import { IngresoCedula } from "./pages/IngresoCedula";
 import { Registro } from "./pages/Registro";
 import { Cartilla } from "./pages/Cartilla";
@@ -7,26 +9,33 @@ import { ConfirmacionRetiro } from "./pages/ConfirmacionRetiro";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminPanel } from "./pages/admin/AdminPanel";
 
-function Router() {
-  const { page } = useApp();
-
-  switch (page) {
-    case "ingreso":       return <IngresoCedula />;
-    case "registro":      return <Registro />;
-    case "cartilla":      return <Cartilla />;
-    case "planificacion": return <PlanificacionRetiro />;
-    case "confirmacion":  return <ConfirmacionRetiro />;
-    case "admin-login":   return <AdminLogin />;
-    case "admin-panel":   return <AdminPanel />;
-    default:              return <IngresoCedula />;
-  }
-}
-
 export function App() {
   return (
-    <AppProvider>
-      <Router />
-    </AppProvider>
+    <BrowserRouter>
+      <AppProvider>
+        <Routes>
+          <Route path="/" element={<IngresoCedula />} />
+          <Route path="/registro" element={<Registro />} />
+
+          <Route path="/cartilla" element={
+            <PrivateUserRoute><Cartilla /></PrivateUserRoute>
+          } />
+          <Route path="/planificacion" element={
+            <PrivateUserRoute><PlanificacionRetiro /></PrivateUserRoute>
+          } />
+          <Route path="/confirmacion" element={
+            <PrivateUserRoute><ConfirmacionRetiro /></PrivateUserRoute>
+          } />
+
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/panel" element={
+            <PrivateAdminRoute><AdminPanel /></PrivateAdminRoute>
+          } />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AppProvider>
+    </BrowserRouter>
   );
 }
 

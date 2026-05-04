@@ -1,9 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 
 const TOTAL_PUNTOS = 20;
 
 export function Cartilla() {
-  const { usuario, cartilla, retiro, navigate } = useApp();
+  const { usuario, cartilla, retiro, clearUserSession } = useApp();
+  const navigate = useNavigate();
 
   if (!usuario || !cartilla) return null;
 
@@ -22,7 +24,7 @@ export function Cartilla() {
               <p className="text-green-100 text-sm mt-0.5">CI: {usuario.cedula}</p>
             </div>
             <button
-              onClick={() => navigate("ingreso")}
+              onClick={() => { clearUserSession(); navigate("/"); }}
               className="text-green-200 hover:text-white text-sm transition-colors cursor-pointer"
             >
               Salir
@@ -84,7 +86,7 @@ export function Cartilla() {
         <div className="px-6 pb-6 space-y-3">
           {completa && !retiro && (
             <button
-              onClick={() => navigate("planificacion")}
+              onClick={() => navigate("/planificacion")}
               className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl transition-colors text-base cursor-pointer"
             >
               🎁 Reclamar mi camiseta
@@ -99,7 +101,7 @@ export function Cartilla() {
                 📅 {retiro.fecha_retiro} a las {retiro.hora_retiro.slice(0, 5)}
               </p>
               <button
-                onClick={() => navigate("planificacion")}
+                onClick={() => navigate("/planificacion")}
                 className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors cursor-pointer"
               >
                 Modificar retiro
