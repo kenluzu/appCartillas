@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Paginacion } from "../../components/Paginacion";
 import * as XLSX from "xlsx";
 import { useApp } from "../../context/AppContext";
 import { api, type Farmacia } from "../../lib/api";
@@ -33,9 +34,8 @@ type UsuarioAdmin = {
   nombre: string;
   apellido: string;
   telefono: string;
-  fecha_registro: string;
-  cartilla_id?: number;
-  puntos?: number;
+  rol: string;
+  puntos?: number;          
   cartilla_estado?: string;
 };
 
@@ -50,6 +50,11 @@ export function AdminPanel() {
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [paginaUsuarios, setPaginaUsuarios] = useState(1);
+  const [totalUsuarios, setTotalUsuarios] = useState(0);
+  const [totalPaginasUsuarios, setTotalPaginasUsuarios] = useState(0);
+  const [cargandoUsuarios, setCargandoUsuarios] = useState(false);
+  const [errorUsuarios, setErrorUsuarios] = useState("");
 
   useEffect(() => {
     if (!localStorage.getItem("admin_token")) {
@@ -59,17 +64,39 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (tab === "estadisticas") loadStats();
-    if (tab === "usuarios") loadUsuarios();
+    if (tab === "usuarios") loadUsuarios(1, busqueda);
     if (tab === "retiros") loadRetiros();
     if (tab === "stock") loadFarmacias();
   }, [tab]);
+
+  useEffect(() => {
+    if (tab !== "usuarios") return;
+    const timer = setTimeout(() => loadUsuarios(1, busqueda), 400);
+    return () => clearTimeout(timer);
+  }, [busqueda]);
 
   async function loadStats() {
     try { setStats(await api.adminEstadisticas()); } catch { logout(); }
   }
 
-  async function loadUsuarios() {
-    try { setUsuarios(await api.adminUsuarios()); } catch { logout(); }
+  async function loadUsuarios(pagina: number = 1, busq: string = busqueda) {
+    setCargandoUsuarios(true);
+    setErrorUsuarios("");
+    try {
+      const params = new URLSearchParams({ pagina: String(pagina), limite: "20" });
+      if (busq.trim()) params.set("busqueda", busq.trim());
+      const res = await fetch(`/api/admin/usuarios?${params}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setUsuarios(data.datos);
+      setTotalUsuarios(data.total);
+      setTotalPaginasUsuarios(data.totalPaginas);
+      setPaginaUsuarios(data.pagina);
+    } catch {
+      setErrorUsuarios("Error al obtener usuarios");
+    } finally {
+      setCargandoUsuarios(false);
+    }
   }
 
   async function loadRetiros() {
@@ -135,13 +162,6 @@ export function AdminPanel() {
     XLSX.utils.book_append_sheet(wb, ws, "Usuarios");
     XLSX.writeFile(wb, "usuarios_ponte_la_10.xlsx");
   }
-
-  const usuariosFiltrados = usuarios.filter(u =>
-    !busqueda ||
-    u.cedula.includes(busqueda) ||
-    u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    u.apellido.toLowerCase().includes(busqueda.toLowerCase())
-  );
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     {
@@ -304,7 +324,8 @@ export function AdminPanel() {
                   placeholder="Buscar por nombre o cédula..."
                   value={busqueda}
                   onChange={e => setBusqueda(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 placeholder:text-gray-300"
+                  disabled={cargandoUsuarios}
+                  className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 placeholder:text-gray-300 disabled:bg-gray-50 disabled:text-gray-400"
                 />
               </div>
               <button
@@ -331,29 +352,19 @@ export function AdminPanel() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {usuariosFiltrados.map(u => (
-                      <tr key={u.id} className="hover:bg-gray-50/50 transition-colors duration-150">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500">{u.cedula}</td>
-                        <td className="px-4 py-3 font-medium text-gray-800">{u.nombre} {u.apellido}</td>
-                        <td className="px-4 py-3 text-gray-400">{u.telefono}</td>
-                        <td className="px-4 py-3">
-                          {u.puntos !== undefined ? (
-                            <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md text-xs">{u.puntos}/20</span>
-                          ) : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {u.cartilla_estado ? (
-                            <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold
-                              ${u.cartilla_estado === "activa" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" :
-                                u.cartilla_estado === "completa" ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100" :
-                                "bg-slate-50 text-slate-500 ring-1 ring-slate-100"}`}>
-                              {u.cartilla_estado.charAt(0).toUpperCase() + u.cartilla_estado.slice(1)}
-                            </span>
-                          ) : <span className="text-gray-300">—</span>}
+                    {cargandoUsuarios ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-gray-300 text-sm">
+                          Cargando...
                         </td>
                       </tr>
-                    ))}
-                    {usuariosFiltrados.length === 0 && (
+                    ) : errorUsuarios ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-red-400 text-sm">
+                          {errorUsuarios}
+                        </td>
+                      </tr>
+                    ) : usuarios.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-12 text-center text-gray-300 text-sm">
                           <svg className="w-8 h-8 mx-auto mb-2 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
@@ -362,11 +373,35 @@ export function AdminPanel() {
                           No se encontraron usuarios
                         </td>
                       </tr>
+                    ) : (
+                      usuarios.map(u => (
+                        <tr key={u.id} className="hover:bg-gray-50/50 transition-colors duration-150">
+                          <td className="px-4 py-3 font-mono text-xs text-gray-500">{u.cedula}</td>
+                          <td className="px-4 py-3 font-medium text-gray-800">{u.nombre} {u.apellido}</td>
+                          <td className="px-4 py-3 text-gray-400">{u.telefono}</td>
+                          <td className="px-4 py-3">
+                            {/* TODO: join con tabla cartillas */}
+                            <span className="text-gray-300">—</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {/* TODO: join con tabla cartillas */}
+                            <span className="text-gray-300">—</span>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
+
+            <Paginacion
+              paginaActual={paginaUsuarios}
+              totalPaginas={totalPaginasUsuarios || 1}
+              total={totalUsuarios}
+              limite={20}
+              onChange={pagina => loadUsuarios(pagina, busqueda)}
+            />
           </div>
         )}
 

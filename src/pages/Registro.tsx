@@ -1,39 +1,59 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { api } from "../lib/api";
 
 export function Registro() {
   const { navigate, setUsuario, setCartilla, setRetiro, cedulaPendiente } = useApp();
   const [form, setForm] = useState({ nombre: "", apellido: "", telefono: "" });
-  const [error, setError] = useState("");
+  const [erroresCampo, setErroresCampo] = useState({ nombre: "", apellido: "", telefono: "" });
+  const [errorGlobal, setErrorGlobal] = useState("");
   const [cargando, setCargando] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    if (erroresCampo[name as keyof typeof erroresCampo]) {
+      setErroresCampo(prev => ({ ...prev, [name]: "" }));
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.nombre.trim() || !form.apellido.trim() || !form.telefono.trim()) {
-      setError("Todos los campos son requeridos");
-      return;
-    }
+
+    const nuevosErrores = {
+      nombre: form.nombre.trim() ? "" : "El nombre es requerido",
+      apellido: form.apellido.trim() ? "" : "El apellido es requerido",
+      telefono: form.telefono.trim() ? "" : "El teléfono es requerido",
+    };
+    setErroresCampo(nuevosErrores);
+    if (nuevosErrores.nombre || nuevosErrores.apellido || nuevosErrores.telefono) return;
 
     setCargando(true);
-    setError("");
+    setErrorGlobal("");
     try {
-      const res = await api.registrarUsuario({
-        cedula: cedulaPendiente,
-        nombre: form.nombre.trim(),
-        apellido: form.apellido.trim(),
-        telefono: form.telefono.trim(),
+      const res = await fetch("/api/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cedula: cedulaPendiente,
+          nombre: form.nombre.trim(),
+          apellido: form.apellido.trim(),
+          telefono: form.telefono.trim(),
+        }),
       });
-      setUsuario(res.usuario);
-      setCartilla(res.cartilla);
-      setRetiro(null);
-      navigate("cartilla");
-    } catch (e: any) {
-      setError(e.message ?? "Error al registrar");
+
+      if (res.status === 201) {
+        const data = await res.json();
+        setUsuario(data);
+        setCartilla(data.cartilla);
+        setRetiro(null);
+        navigate("cartilla");
+      } else if (res.status === 409) {
+        setErrorGlobal("Esta cédula ya está registrada");
+      } else {
+        setErrorGlobal("Ocurrió un error, intenta de nuevo");
+      }
+    } catch {
+      setErrorGlobal("Ocurrió un error, intenta de nuevo");
     } finally {
       setCargando(false);
     }
@@ -62,10 +82,14 @@ export function Registro() {
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
+              disabled={cargando}
               type="text"
               placeholder="Tu nombre"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
             />
+            {erroresCampo.nombre && (
+              <p className="text-red-600 text-xs mt-1">{erroresCampo.nombre}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
@@ -73,10 +97,14 @@ export function Registro() {
               name="apellido"
               value={form.apellido}
               onChange={handleChange}
+              disabled={cargando}
               type="text"
               placeholder="Tu apellido"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
             />
+            {erroresCampo.apellido && (
+              <p className="text-red-600 text-xs mt-1">{erroresCampo.apellido}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono / Celular</label>
@@ -84,16 +112,20 @@ export function Registro() {
               name="telefono"
               value={form.telefono}
               onChange={handleChange}
+              disabled={cargando}
               type="tel"
               placeholder="0999999999"
               inputMode="tel"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
             />
+            {erroresCampo.telefono && (
+              <p className="text-red-600 text-xs mt-1">{erroresCampo.telefono}</p>
+            )}
           </div>
 
-          {error && (
+          {errorGlobal && (
             <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
-              {error}
+              {errorGlobal}
             </p>
           )}
 

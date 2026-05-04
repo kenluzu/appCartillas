@@ -23,8 +23,9 @@ export function IngresoCedula() {
         navigate("registro");
       } else if (res.ok) {
         const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string };
+        const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
         setUsuario(usuario);
-        setCartilla({ id: 0, puntos: 0, estado: "activa", fecha_inicio: new Date().toISOString().slice(0, 10) });
+        setCartilla(cartilla);
         setRetiro(null);
         navigate("cartilla");
       } else {
