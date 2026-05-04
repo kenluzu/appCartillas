@@ -6,7 +6,6 @@ import { PlanificacionRetiro } from "./pages/PlanificacionRetiro";
 import { ConfirmacionRetiro } from "./pages/ConfirmacionRetiro";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 import { AdminPanel } from "./pages/admin/AdminPanel";
-import "./index.css";
 
 function Router() {
   const { page } = useApp();

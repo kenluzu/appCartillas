@@ -12,7 +12,7 @@ export function Cartilla() {
   const completa = !cerrada && (cartilla.estado === "completa" || puntos >= TOTAL_PUNTOS);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
         {/* Encabezado */}
         <div className="bg-green-600 text-white px-6 py-5">

@@ -133,7 +133,7 @@ export function PlanificacionRetiro() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 px-4 py-8">
+    <div className="min-h-screen px-4 py-8">
       <div className="max-w-xl mx-auto space-y-4">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("cartilla")} className="text-gray-500 hover:text-gray-700 text-sm cursor-pointer">

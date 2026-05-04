@@ -9,7 +9,7 @@ export const AppDataSource = new DataSource({
   port: Number(process.env.DB_PORT ?? 1433),
   username: process.env.DB_USER ?? "sa",
   password: process.env.DB_PASSWORD ?? "codeFather2000!",
-  database: process.env.DB_NAME ?? "ponte_la10",
+  database: process.env.DB_NAME ?? "dbCartillas",
   entities: [Usuario, Cartilla],
   synchronize: false,
   logging: process.env.NODE_ENV !== "production",

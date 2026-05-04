@@ -1,15 +1,17 @@
+import { Router, type Request, type Response } from "express";
 import { UsuarioRepository } from "../repositories/UsuarioRepository";
 
-export async function handleListarUsuarios(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const pagina = Math.max(1, parseInt(url.searchParams.get("pagina") ?? "1") || 1);
+export const routerAdmin = Router();
+
+routerAdmin.get("/usuarios", async (req: Request, res: Response) => {
+  const pagina = Math.max(1, parseInt((req.query.pagina as string) ?? "1") || 1);
   const limite = 5;
-  const busqueda = url.searchParams.get("busqueda") ?? undefined;
+  const busqueda = (req.query.busqueda as string) || undefined;
 
   try {
     const { datos, total } = await UsuarioRepository.listarUsuarios({ pagina, limite, busqueda });
-    return Response.json({
-      datos: datos.map(u => ({
+    res.json({
+      datos: datos.map((u) => ({
         id: u.id,
         cedula: u.cedula,
         nombre: u.nombre,
@@ -24,6 +26,6 @@ export async function handleListarUsuarios(req: Request): Promise<Response> {
     });
   } catch (err) {
     console.error("[listarUsuarios] Error de BD:", err);
-    return Response.json({ error: "Error al obtener usuarios" }, { status: 500 });
+    res.status(500).json({ error: "Error al obtener usuarios" });
   }
-}
+});
