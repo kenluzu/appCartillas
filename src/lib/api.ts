@@ -59,7 +59,7 @@ const usuarios = new Map<string, StoredUsuario>([
   ["1234567890", { id: 1, cedula: "1234567890", nombre: "Juan Carlos",  apellido: "Pérez López",    telefono: "0991234567", rol: "usuario" }],
   ["0987654321", { id: 2, cedula: "0987654321", nombre: "María Elena",  apellido: "García Torres",  telefono: "0987654321", rol: "usuario" }],
   ["1122334455", { id: 3, cedula: "1122334455", nombre: "Carlos",       apellido: "Rodríguez Vega", telefono: "0995551234", rol: "usuario" }],
-  ["123",      { id: 99, cedula: "123",     nombre: "Administrador",apellido: "Sistema",        telefono: "0000000000", rol: "admin", password: "123" }],
+  ["123",      { id: 99, cedula: "123",     nombre: "Administrador",apellido: "Sistema",        telefono: "0000000000", rol: "ADMIN", password: "123" }],
 ]);
 
 const cartillas = new Map<number, StoredCartilla>([
@@ -101,7 +101,7 @@ export const api = {
   }> {
     await delay();
     const usuario = usuarios.get(cedula);
-    if (!usuario || usuario.rol === "admin") return { encontrado: false };
+    if (!usuario || usuario.rol === "ADMIN") return { encontrado: false };
 
     let cartilla = cartillaDe(usuario.id);
     if (!cartilla) {
@@ -185,7 +185,7 @@ export const api = {
   async adminLogin(cedula: string, password: string): Promise<{ token: string; nombre: string }> {
     await delay();
     const admin = usuarios.get(cedula);
-    if (!admin || admin.rol !== "admin" || admin.password !== password) {
+    if (!admin || admin.rol !== "ADMIN" || admin.password !== password) {
       throw new Error("Credenciales inválidas");
     }
     return { token: "mock-admin-token", nombre: admin.nombre };

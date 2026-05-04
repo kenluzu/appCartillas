@@ -39,6 +39,14 @@ type UsuarioAdmin = {
   cartilla_estado?: string;
 };
 
+function getToken(): string | null {
+  return localStorage.getItem("admin_token");
+}
+
+function authHeaders(): HeadersInit {
+  return { "Authorization": `Bearer ${getToken()}` };
+}
+
 export function AdminPanel() {
   const { adminNombre, navigate, setAdminNombre } = useApp();
   const [tab, setTab] = useState<Tab>("estadisticas");
@@ -56,10 +64,14 @@ export function AdminPanel() {
   const [cargandoUsuarios, setCargandoUsuarios] = useState(false);
   const [errorUsuarios, setErrorUsuarios] = useState("");
 
+  function handleUnauthorized() {
+    localStorage.removeItem("admin_token");
+    setAdminNombre(null);
+    navigate("admin-login");
+  }
+
   useEffect(() => {
-    if (!localStorage.getItem("admin_token")) {
-      navigate("admin-login");
-    }
+    if (!getToken()) navigate("admin-login");
   }, []);
 
   useEffect(() => {
@@ -85,7 +97,8 @@ export function AdminPanel() {
     try {
       const params = new URLSearchParams({ pagina: String(pagina), limite: "20" });
       if (busq.trim()) params.set("busqueda", busq.trim());
-      const res = await fetch(`/api/admin/usuarios?${params}`);
+      const res = await fetch(`/api/admin/usuarios?${params}`, { headers: authHeaders() });
+      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
       if (!res.ok) throw new Error();
       const data = await res.json();
       setUsuarios(data.datos);
@@ -116,7 +129,7 @@ export function AdminPanel() {
   function logout() {
     localStorage.removeItem("admin_token");
     setAdminNombre(null);
-    navigate("ingreso");
+    navigate("admin-login");
   }
 
   async function handleEntregar(id: number) {
@@ -269,7 +282,7 @@ export function AdminPanel() {
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-200 cursor-pointer
                 ${tab === t.key
                   ? "border-yellow-400 text-yellow-300"
-                  : "border-transparent text-white hover:text-white hover:border-green-500"}`}
+                  : "border-transparent text-white hover:text-white hover:border-yellow-300"}`}
             >
               {t.icon}
               {t.label}

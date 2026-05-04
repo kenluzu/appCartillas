@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useApp } from "../../context/AppContext";
-import { api } from "../../lib/api";
 
 export function AdminLogin() {
   const { navigate, setAdminNombre } = useApp();
@@ -15,9 +14,15 @@ export function AdminLogin() {
     setCargando(true);
     setError("");
     try {
-      const res = await api.adminLogin(form.cedula.trim(), form.password);
-      localStorage.setItem("admin_token", res.token);
-      setAdminNombre(res.nombre);
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cedula: form.cedula.trim(), password: form.password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Credenciales inválidas");
+      localStorage.setItem("admin_token", data.token);
+      setAdminNombre(data.nombre);
       navigate("admin-panel");
     } catch (e: any) {
       setError(e.message ?? "Credenciales inválidas");

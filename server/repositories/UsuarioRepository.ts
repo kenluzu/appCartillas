@@ -6,6 +6,15 @@ export const UsuarioRepository = {
     return AppDataSource.getRepository(Usuario).findOne({ where: { cedula } });
   },
 
+  async buscarAdminPorCedula(cedula: string): Promise<Usuario | null> {
+    return AppDataSource.getRepository(Usuario)
+      .createQueryBuilder("u")
+      .addSelect("u.password")
+      .where("u.cedula = :cedula", { cedula })
+      .andWhere("u.rol = :rol", { rol: "ADMIN" })
+      .getOne();
+  },
+
   async crearUsuario(datos: {
     cedula: string;
     nombre: string;

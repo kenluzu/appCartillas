@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production tsx server/index.ts"
   },
   "dependencies": {
+    "bcrypt-ts": "^8.0.1",
     "express": "^4.21.2",
     "mssql": "^12.5.0",
     "react": "^19",

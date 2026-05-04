@@ -1,32 +1,74 @@
 import { Router, type Request, type Response } from "express";
+import jwt from "jsonwebtoken";
+import { compareSync } from "bcrypt-ts";
 import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
+import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
 
 export const routerAdmin = Router();
 
+// ── Ruta pública: login ────────────────────────────────────────────────────────
+routerAdmin.post("/login", async (req: Request, res: Response) => {
+  const { cedula, password } = req.body ?? {};
+
+  if (!cedula?.trim() || !password) {
+    res.status(400).json({ error: "Credenciales requeridas" });
+    return;
+  }
+
+  try {
+    const admin = await UsuarioRepository.buscarAdminPorCedula(cedula.trim());
+
+    if (!admin || !admin.password) {
+      res.status(401).json({ error: "Credenciales inválidas" });
+      return;
+    }
+    const passwordValida = compareSync(password, admin.password);
+    if (!passwordValida) {
+      res.status(401).json({ error: "Credenciales inválidas" });
+      return;
+    }
+
+    const nombre = `${admin.nombre}${admin.apellido ? " " + admin.apellido : ""}`;
+    const token = jwt.sign(
+      { cedula: admin.cedula, nombre, rol: "ADMIN" },
+      JWT_SECRET,
+      { expiresIn: "8h" }
+    );
+
+    res.json({ token, nombre });
+  } catch (err) {
+    console.error("[admin/login] Error:", err);
+    res.status(500).json({ error: "Error de servidor" });
+  }
+});
+
+// ── Rutas protegidas ───────────────────────────────────────────────────────────
+routerAdmin.use(authMiddleware);
+
 routerAdmin.get("/usuarios", async (req: Request, res: Response) => {
-  const pagina = Math.max(1, parseInt((req.query.pagina as string) ?? "1") || 1);
-  const limite = 10;
+  const pagina   = Math.max(1, parseInt((req.query.pagina as string) ?? "1") || 1);
+  const limite   = 10;
   const busqueda = (req.query.busqueda as string) || undefined;
 
   try {
     const { datos, total } = await UsuarioRepository.listarUsuarios({ pagina, limite, busqueda });
 
-    const ids = datos.map((u) => u.id);
+    const ids         = datos.map((u) => u.id);
     const cartillasMap = await CartillaRepository.buscarActivasPorUsuarios(ids);
 
     res.json({
       datos: datos.map((u) => {
         const cartilla = cartillasMap.get(u.id);
         return {
-          id: u.id,
-          cedula: u.cedula,
-          nombre: u.nombre,
-          apellido: u.apellido ?? "",
-          telefono: u.telefono ?? "",
-          rol: u.rol,
-          puntos: cartilla?.puntos ?? null,
-          cartilla_estado: cartilla?.estado ?? null,
+          id:              u.id,
+          cedula:          u.cedula,
+          nombre:          u.nombre,
+          apellido:        u.apellido  ?? "",
+          telefono:        u.telefono  ?? "",
+          rol:             u.rol,
+          puntos:          cartilla?.puntos      ?? null,
+          cartilla_estado: cartilla?.estado      ?? null,
         };
       }),
       total,
