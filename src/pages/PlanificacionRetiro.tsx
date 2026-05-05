@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
-import { api, haversine, type Farmacia } from "../lib/api";
+import { getFarmacias, type Farmacia } from "../lib/farmacias";
+import { crearPlan, actualizarPlan } from "../lib/retiros";
+import { haversine } from "../lib/utils";
 import location1Svg from "../assets/location1.svg";
 
 declare const L: any;
@@ -29,7 +31,7 @@ export function PlanificacionRetiro() {
   const hoy = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    api.getFarmacias().then(data => {
+    getFarmacias().then(data => {
       setFarmacias(data);
       setLoadingFarmacias(false);
     });
@@ -111,14 +113,14 @@ export function PlanificacionRetiro() {
     setError("");
     try {
       if (esModificacion && retiro) {
-        const updated = await api.updatePlan(retiro.id, {
+        const updated = await actualizarPlan(retiro.id, {
           farmacia_id: farmaciaSeleccionada,
           fecha_retiro: fecha,
           hora_retiro: hora,
         });
         setRetiro(updated);
       } else {
-        const nuevo = await api.createPlan({
+        const nuevo = await crearPlan({
           cartilla_id: cartilla!.id,
           farmacia_id: farmaciaSeleccionada,
           fecha_retiro: fecha,

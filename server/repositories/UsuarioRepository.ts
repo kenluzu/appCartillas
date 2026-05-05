@@ -31,6 +31,14 @@ export const UsuarioRepository = {
     return repo.save(usuario);
   },
 
+  async exportarTodos(): Promise<Usuario[]> {
+    return AppDataSource.getRepository(Usuario)
+      .createQueryBuilder("u")
+      .where("u.rol != :admin", { admin: "ADMIN" })
+      .orderBy("u.cedula", "ASC")
+      .getMany();
+  },
+
   async listarUsuarios({pagina, limite, busqueda,}: {pagina: number;limite: number;busqueda?: string;
   }): Promise<{ datos: Usuario[]; total: number }> {
     const repo = AppDataSource.getRepository(Usuario);

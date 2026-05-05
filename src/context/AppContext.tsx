@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import type { Usuario, Cartilla, Retiro } from "../lib/api";
+import type { Usuario, Cartilla, Retiro } from "../lib/types";
 
 type AppState = {
   usuario: Usuario | null;

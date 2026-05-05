@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import { compareSync } from "bcrypt-ts";
 import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
+import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
+import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
+import { PlanRetiro } from "../entities/PlanRetiro";
 import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
 import { AppDataSource } from "../data-source";
 import { Usuario } from "../entities/Usuario";
@@ -63,12 +66,16 @@ routerAdmin.get("/estadisticas", async (_req: Request, res: Response) => {
     const usuarioRepo = AppDataSource.getRepository(Usuario);
     const cartillaRepo = AppDataSource.getRepository(Cartilla);
 
-    const [total_usuarios, cartillas_activas, cartillas_completas, cartillas_cerradas] =
+    const retiroRepo = AppDataSource.getRepository(PlanRetiro);
+
+    const [total_usuarios, cartillas_activas, cartillas_completas, cartillas_cerradas, premios_entregados, retiros_pendientes] =
       await Promise.all([
         usuarioRepo.createQueryBuilder("u").where("u.rol != :admin", { admin: "ADMIN" }).getCount(),
         cartillaRepo.count({ where: { estado: "activa" } }),
         cartillaRepo.count({ where: { estado: "completa" } }),
         cartillaRepo.count({ where: { estado: "cerrada" } }),
+        retiroRepo.count({ where: { estado: "entregado" } }),
+        retiroRepo.count({ where: { estado: "planificado" } }),
       ]);
 
     const result: EstadisticasResponse = {
@@ -76,14 +83,137 @@ routerAdmin.get("/estadisticas", async (_req: Request, res: Response) => {
       cartillas_activas,
       cartillas_completas,
       cartillas_cerradas,
-      premios_entregados: 0, // TODO: requiere tabla retiros con estado='entregado'
-      retiros_pendientes: 0, // TODO: requiere tabla retiros con estado='planificado'
+      premios_entregados,
+      retiros_pendientes,
     };
 
     res.json(result);
   } catch (err) {
     console.error("[admin/estadisticas] Error:", err);
     res.status(500).json({ error: "Error al obtener estadísticas" });
+  }
+});
+
+routerAdmin.get("/farmacias", async (_req: Request, res: Response) => {
+  try {
+    res.json(await FarmaciaRepository.buscarTodas());
+  } catch (err) {
+    console.error("[admin/farmacias] Error:", err);
+    res.status(500).json({ error: "Error al obtener farmacias" });
+  }
+});
+
+routerAdmin.post("/farmacias", async (req: Request, res: Response) => {
+  const { nombre, direccion, latitud, longitud, cantidad } = req.body ?? {};
+  if (!nombre?.trim() || !direccion?.trim() || latitud == null || longitud == null) {
+    res.status(400).json({ error: "Faltan campos requeridos" });
+    return;
+  }
+  try {
+    const farmacia = await FarmaciaRepository.crear({
+      nombre: nombre.trim(),
+      direccion: direccion.trim(),
+      latitud: Number(latitud),
+      longitud: Number(longitud),
+      cantidad: Number(cantidad ?? 0),
+    });
+    res.status(201).json(farmacia);
+  } catch (err) {
+    console.error("[admin/farmacias/crear] Error:", err);
+    res.status(500).json({ error: "Error al crear farmacia" });
+  }
+});
+
+routerAdmin.put("/farmacias/:id", async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  const { nombre, direccion, latitud, longitud, cantidad } = req.body ?? {};
+  const updates: Record<string, unknown> = {};
+  if (nombre?.trim())    updates.nombre    = nombre.trim();
+  if (direccion?.trim()) updates.direccion = direccion.trim();
+  if (latitud  != null)  updates.latitud   = Number(latitud);
+  if (longitud != null)  updates.longitud  = Number(longitud);
+  if (cantidad != null)  updates.cantidad  = Number(cantidad);
+  try {
+    const farmacia = await FarmaciaRepository.actualizar(id, updates);
+    if (!farmacia) { res.status(404).json({ error: "Farmacia no encontrada" }); return; }
+    res.json(farmacia);
+  } catch (err) {
+    console.error("[admin/farmacias/actualizar] Error:", err);
+    res.status(500).json({ error: "Error al actualizar farmacia" });
+  }
+});
+
+routerAdmin.delete("/farmacias/:id", async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  try {
+    const ok = await FarmaciaRepository.eliminar(id);
+    if (!ok) { res.status(404).json({ error: "Farmacia no encontrada" }); return; }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[admin/farmacias/eliminar] Error:", err);
+    res.status(500).json({ error: "Error al eliminar farmacia" });
+  }
+});
+
+routerAdmin.get("/usuarios/exportar", async (_req: Request, res: Response) => {
+  try {
+    const usuarios = await UsuarioRepository.exportarTodos();
+    const ids = usuarios.map((u) => u.id);
+    const cartillasMap = await CartillaRepository.buscarActivasPorUsuarios(ids);
+
+    res.json(
+      usuarios.map((u) => {
+        const cartilla = cartillasMap.get(u.id);
+        return {
+          cedula:          u.cedula,
+          nombre:          u.nombre,
+          apellido:        u.apellido  ?? "",
+          telefono:        u.telefono  ?? "",
+          puntos:          cartilla?.puntos  ?? 0,
+          cartilla_estado: cartilla?.estado  ?? "sin cartilla",
+        };
+      })
+    );
+  } catch (err) {
+    console.error("[admin/usuarios/exportar] Error:", err);
+    res.status(500).json({ error: "Error al exportar usuarios" });
+  }
+});
+
+routerAdmin.get("/retiros", async (_req: Request, res: Response) => {
+  try {
+    res.json(await PlanRetiroRepository.listarParaAdmin());
+  } catch (err) {
+    console.error("[admin/retiros] Error:", err);
+    res.status(500).json({ error: "Error al obtener retiros" });
+  }
+});
+
+routerAdmin.put("/retiros/:id/entregar", async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  try {
+    const result = await PlanRetiroRepository.marcarEntregado(id);
+    if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[admin/retiros/entregar] Error:", err);
+    res.status(500).json({ error: "Error al marcar retiro como entregado" });
+  }
+});
+
+routerAdmin.put("/retiros/:id/revertir", async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  try {
+    const result = await PlanRetiroRepository.revertirEntrega(id);
+    if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[admin/retiros/revertir] Error:", err);
+    res.status(500).json({ error: "Error al revertir el retiro" });
   }
 });
 

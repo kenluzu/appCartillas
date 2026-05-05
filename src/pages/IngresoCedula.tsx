@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
-import type { Retiro } from "../lib/api";
+import type { Retiro } from "../lib/types";
 
 export function IngresoCedula() {
   const { setUsuario, setCartilla, setRetiro, setCedulaPendiente } = useApp();

@@ -8,9 +8,9 @@ export const routerUsuarios = Router();
 
 function horaStr(value: unknown): string {
   if (value instanceof Date) {
-    const h = value.getUTCHours().toString().padStart(2, "0");
-    const m = value.getUTCMinutes().toString().padStart(2, "0");
-    const s = value.getUTCSeconds().toString().padStart(2, "0");
+    const h = value.getHours().toString().padStart(2, "0");
+    const m = value.getMinutes().toString().padStart(2, "0");
+    const s = value.getSeconds().toString().padStart(2, "0");
     return `${h}:${m}:${s}`;
   }
   return String(value ?? "");
