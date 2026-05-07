@@ -3,6 +3,7 @@ import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
 import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
 import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
+import { RetoRepository } from "../repositories/RetoRepository";
 
 export const routerUsuarios = Router();
 
@@ -15,6 +16,13 @@ function horaStr(value: unknown): string {
   }
   return String(value ?? "");
 }
+
+const MONTOS_MIN: Record<string, number> = {
+  contact_center: 20,
+  referido: 10,
+  lineas_estrategicas: 10,
+  productos_focos: 10,
+};
 
 routerUsuarios.get("/farmacias", async (_req: Request, res: Response) => {
   try {
@@ -129,6 +137,144 @@ routerUsuarios.post("/", async (req: Request, res: Response) => {
   }
 });
 
+// ── Registrar un reto (suma 1 punto a la cartilla) ─────────────────────────────
+routerUsuarios.post("/reto", async (req: Request, res: Response) => {
+  const { cartilla_id, tipo_reto, monto, numero_factura, descripcion } = req.body ?? {};
+
+  if (!cartilla_id || !tipo_reto || monto == null) {
+    res.status(400).json({ error: "Datos incompletos" });
+    return;
+  }
+
+  const montoNum = parseFloat(monto);
+  const montoMin = MONTOS_MIN[tipo_reto];
+
+  if (!montoMin) {
+    res.status(400).json({ error: "Tipo de reto no válido" });
+    return;
+  }
+
+  if (isNaN(montoNum) || montoNum < montoMin) {
+    res.status(400).json({ error: `El monto mínimo para este reto es $${montoMin}` });
+    return;
+  }
+
+  try {
+    const { reto, cartilla } = await RetoRepository.registrar({
+      cartilla_id: Number(cartilla_id),
+      tipo_reto,
+      monto: montoNum,
+      numero_factura: numero_factura?.trim() || undefined,
+      descripcion: descripcion?.trim() || undefined,
+    });
+
+    res.status(201).json({
+      ok: true,
+      reto: {
+        id: reto.id,
+        tipo_reto: reto.tipo_reto,
+        monto: reto.monto,
+        fecha_registro: reto.fecha_registro,
+      },
+      cartilla: {
+        id: cartilla.id,
+        puntos: cartilla.puntos,
+        estado: cartilla.estado,
+        fecha_inicio: cartilla.fecha_inicio,
+      },
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error al registrar reto";
+    if (msg === "Cartilla no encontrada") {
+      res.status(404).json({ error: msg });
+    } else if (msg === "La cartilla no está activa") {
+      res.status(400).json({ error: msg });
+    } else {
+      console.error("[registrarReto] Error de BD:", err);
+      res.status(500).json({ error: "Error al guardar el reto" });
+    }
+  }
+});
+
+// ── Historial de cartillas de un usuario ───────────────────────────────────────
+routerUsuarios.get("/historial", async (req: Request, res: Response) => {
+  const usuario_id = req.query.usuario_id as string | undefined;
+
+  if (!usuario_id) {
+    res.status(400).json({ error: "usuario_id requerido" });
+    return;
+  }
+
+  try {
+    const cartillas = await CartillaRepository.buscarTodasPorUsuario(Number(usuario_id));
+    const ids = cartillas.map(c => c.id);
+    const retosMap = await RetoRepository.contarPorCartillas(ids);
+
+    res.json(
+      cartillas.map((c, i) => ({
+        id: c.id,
+        puntos: c.puntos,
+        estado: c.estado,
+        fecha_inicio: c.fecha_inicio,
+        numero: cartillas.length - i,
+        total_retos: retosMap.get(c.id) ?? 0,
+      }))
+    );
+  } catch (err) {
+    console.error("[historial] Error de BD:", err);
+    res.status(500).json({ error: "Error al obtener historial" });
+  }
+});
+
+// ── Retos de una cartilla específica ───────────────────────────────────────────
+routerUsuarios.get("/retos/:cartillaId", async (req: Request, res: Response) => {
+  const cartillaId = parseInt(req.params.cartillaId);
+  if (isNaN(cartillaId)) {
+    res.status(400).json({ error: "ID inválido" });
+    return;
+  }
+
+  try {
+    const retos = await RetoRepository.buscarPorCartilla(cartillaId);
+    res.json(retos);
+  } catch (err) {
+    console.error("[retosCartilla] Error de BD:", err);
+    res.status(500).json({ error: "Error al obtener retos" });
+  }
+});
+
+// ── Iniciar nueva cartilla (después de completar una) ─────────────────────────
+routerUsuarios.post("/nueva-cartilla", async (req: Request, res: Response) => {
+  const { usuario_id } = req.body ?? {};
+
+  if (!usuario_id) {
+    res.status(400).json({ error: "usuario_id requerido" });
+    return;
+  }
+
+  try {
+    const cartillaActual = await CartillaRepository.buscarActivaPorUsuario(Number(usuario_id));
+
+    if (cartillaActual && cartillaActual.estado === "activa") {
+      res.status(400).json({ error: "Ya tienes una cartilla activa" });
+      return;
+    }
+
+    const nueva = await CartillaRepository.crearCartilla(Number(usuario_id));
+
+    res.status(201).json({
+      id: nueva.id,
+      puntos: nueva.puntos,
+      estado: nueva.estado,
+      fecha_inicio: nueva.fecha_inicio,
+    });
+  } catch (err) {
+    console.error("[nuevaCartilla] Error de BD:", err);
+    res.status(500).json({ error: "Error al crear nueva cartilla" });
+  }
+});
+
+// ── Rutas legacy de retiros (se mantienen para compatibilidad) ─────────────────
 routerUsuarios.post("/plan", async (req: Request, res: Response) => {
   const { cartilla_id, farmacia_id, fecha_retiro, hora_retiro } = req.body ?? {};
 
@@ -151,7 +297,7 @@ routerUsuarios.post("/plan", async (req: Request, res: Response) => {
       res.status(400).json({ error: "Farmacia no válida" });
       return;
     }
-    if (cartilla.estado !== "completa" && cartilla.puntos < 20) {
+    if (cartilla.estado !== "completa" && cartilla.puntos < 10) {
       res.status(400).json({ error: "La cartilla no tiene los puntos suficientes" });
       return;
     }

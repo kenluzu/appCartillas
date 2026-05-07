@@ -5,6 +5,7 @@ import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
 import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
 import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
+import { RetoRepository } from "../repositories/RetoRepository";
 import { PlanRetiro } from "../entities/PlanRetiro";
 import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
 import { AppDataSource } from "../data-source";
@@ -214,6 +215,66 @@ routerAdmin.put("/retiros/:id/revertir", async (req: Request, res: Response) => 
   } catch (err) {
     console.error("[admin/retiros/revertir] Error:", err);
     res.status(500).json({ error: "Error al revertir el retiro" });
+  }
+});
+
+// ── Cartillas (reemplaza la vista de retiros en el nuevo flujo) ────────────────
+routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
+  const estado = req.query.estado as string | undefined;
+  const busqueda = (req.query.busqueda as string) || undefined;
+  const pagina = Math.max(1, parseInt((req.query.pagina as string) ?? "1") || 1);
+  const limite = 20;
+
+  try {
+    let sql = `
+      SELECT
+        c.id, c.usuario_id, c.puntos, c.estado, c.fecha_inicio,
+        u.cedula, u.nombre, u.apellido, u.telefono,
+        (SELECT COUNT(*) FROM retos r WHERE r.cartilla_id = c.id) AS total_retos
+      FROM cartillas c
+      INNER JOIN usuarios u ON u.id = c.usuario_id
+      WHERE u.rol != 'ADMIN'
+    `;
+    const params: unknown[] = [];
+
+    if (estado && estado !== "todos") {
+      sql += ` AND c.estado = @${params.length}`;
+      params.push(estado);
+    }
+    if (busqueda?.trim()) {
+      const q = `%${busqueda.trim()}%`;
+      sql += ` AND (u.nombre LIKE @${params.length} OR u.cedula LIKE @${params.length + 1})`;
+      params.push(q, q);
+    }
+
+    const countSql = `SELECT COUNT(*) AS total FROM (${sql}) AS sub`;
+    const countResult = await AppDataSource.query(countSql, params) as Array<{ total: number }>;
+    const total = Number(countResult[0]?.total ?? 0);
+
+    sql += ` ORDER BY c.id DESC OFFSET ${(pagina - 1) * limite} ROWS FETCH NEXT ${limite} ROWS ONLY`;
+    const datos = await AppDataSource.query(sql, params) as Array<Record<string, unknown>>;
+
+    res.json({
+      datos: datos.map(row => ({
+        id:          Number(row["id"]),
+        usuario_id:  Number(row["usuario_id"]),
+        cedula:      row["cedula"],
+        nombre:      row["nombre"],
+        apellido:    row["apellido"] ?? "",
+        telefono:    row["telefono"] ?? "",
+        puntos:      Number(row["puntos"]),
+        estado:      row["estado"],
+        fecha_inicio: row["fecha_inicio"],
+        total_retos: Number(row["total_retos"]),
+      })),
+      total,
+      pagina,
+      limite,
+      totalPaginas: Math.max(1, Math.ceil(total / limite)),
+    });
+  } catch (err) {
+    console.error("[admin/cartillas] Error:", err);
+    res.status(500).json({ error: "Error al obtener cartillas" });
   }
 });
 

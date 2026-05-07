@@ -1,15 +1,19 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { Usuario, Cartilla, Retiro } from "../lib/types";
 
+type Canal = "CORPORATIVO" | "COMERCIAL" | null;
+
 type AppState = {
   usuario: Usuario | null;
   cartilla: Cartilla | null;
   retiro: Retiro | null;
+  canal: Canal;
   adminNombre: string | null;
   cedulaPendiente: string;
   setUsuario: (u: Usuario | null) => void;
   setCartilla: (c: Cartilla | null) => void;
   setRetiro: (r: Retiro | null) => void;
+  setCanal: (c: Canal) => void;
   setAdminNombre: (n: string | null) => void;
   setCedulaPendiente: (c: string) => void;
   clearUserSession: () => void;
@@ -36,6 +40,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [retiro, _setRetiro] = useState<Retiro | null>(
     () => readStorage<Retiro>(sessionStorage, "session_retiro")
   );
+  const [canal, _setCanal] = useState<Canal>(
+    () => (sessionStorage.getItem("session_canal") as Canal) ?? null
+  );
   const [adminNombre, _setAdminNombre] = useState<string | null>(
     () => localStorage.getItem("admin_nombre")
   );
@@ -61,6 +68,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else sessionStorage.removeItem("session_retiro");
   }
 
+  function setCanal(c: Canal) {
+    _setCanal(c);
+    if (c) sessionStorage.setItem("session_canal", c);
+    else sessionStorage.removeItem("session_canal");
+  }
+
   function setAdminNombre(n: string | null) {
     _setAdminNombre(n);
     if (n) localStorage.setItem("admin_nombre", n);
@@ -77,9 +90,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     _setUsuario(null);
     _setCartilla(null);
     _setRetiro(null);
+    _setCanal(null);
     sessionStorage.removeItem("session_usuario");
     sessionStorage.removeItem("session_cartilla");
     sessionStorage.removeItem("session_retiro");
+    sessionStorage.removeItem("session_canal");
   }
 
   return (
@@ -88,11 +103,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         usuario,
         cartilla,
         retiro,
+        canal,
         adminNombre,
         cedulaPendiente,
         setUsuario,
         setCartilla,
         setRetiro,
+        setCanal,
         setAdminNombre,
         setCedulaPendiente,
         clearUserSession,

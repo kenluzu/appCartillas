@@ -4,6 +4,7 @@ import { Usuario } from "./entities/Usuario";
 import { Cartilla } from "./entities/Cartilla";
 import { PlanRetiro } from "./entities/PlanRetiro";
 import { Farmacia } from "./entities/Farmacia";
+import { Reto } from "./entities/Reto";
 
 export const AppDataSource = new DataSource({
   type: "mssql",
@@ -12,7 +13,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER ?? "sa",
   password: process.env.DB_PASSWORD ?? "codeFather2000!",
   database: process.env.DB_NAME ?? "dbCartillas",
-  entities: [Usuario, Cartilla, PlanRetiro, Farmacia],
+  entities: [Usuario, Cartilla, PlanRetiro, Farmacia, Reto],
   synchronize: false,
   logging: process.env.NODE_ENV !== "production",
   options: {

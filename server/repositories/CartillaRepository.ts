@@ -41,4 +41,12 @@ export const CartillaRepository = {
     });
     return repo.save(cartilla);
   },
+
+  async buscarTodasPorUsuario(usuarioId: number): Promise<Cartilla[]> {
+    return AppDataSource.getRepository(Cartilla)
+      .createQueryBuilder("c")
+      .where("c.usuario_id = :uid", { uid: usuarioId })
+      .orderBy("c.id", "DESC")
+      .getMany();
+  },
 };
