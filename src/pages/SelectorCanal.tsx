@@ -1,20 +1,61 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 
 export function SelectorCanal() {
-  const { setCanal } = useApp();
+  const { setCanal, setUsuario, setCartilla, setRetiro } = useApp();
   const navigate = useNavigate();
+  const [cedula, setCedula] = useState("");
+  const [cargando, setCargando] = useState<"CORPORATIVO" | "COMERCIAL" | null>(null);
+  const [error, setError] = useState("");
 
-  function seleccionar(canal: "CORPORATIVO" | "COMERCIAL") {
-    setCanal(canal);
-    navigate("/ingresar");
+  async function seleccionar(canal: "CORPORATIVO" | "COMERCIAL") {
+    const ced = cedula.trim();
+    if (!ced) {
+      setError("Ingresa tu cédula antes de continuar.");
+      return;
+    }
+
+    setCargando(canal);
+    setError("");
+    try {
+      const res = await fetch(`/api/usuarios/validar?cedula=${encodeURIComponent(ced)}`);
+      const data = await res.json() as Record<string, unknown>;
+
+      if (res.status === 404) {
+        setError("Cédula no encontrada. Comunícate con el administrador.");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error((data.error as string | undefined) ?? "Error al consultar");
+      }
+
+      const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string };
+      const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
+      setUsuario(usuario);
+      setCartilla(cartilla);
+      setRetiro(null);
+      setCanal(canal);
+      navigate("/retos");
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes("Cédula no encontrada")) {
+        setError(e.message);
+      } else {
+        setError("Error de conexión. Intenta de nuevo.");
+      }
+    } finally {
+      setCargando(null);
+    }
   }
+
+  const cedulaValida = cedula.trim().length > 0;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
-
       <div className="w-full max-w-sm bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
-        <div className="text-center mb-8">
+
+        {/* Encabezado */}
+        <div className="text-center mb-7">
           <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">
             ¡Ponte la <span className="text-yellow-600">10</span>!
           </h1>
@@ -23,17 +64,51 @@ export function SelectorCanal() {
           </p>
         </div>
 
-        <p className="text-gray-500 text-center text-sm mb-5">
-          Selecciona tu equipo para continuar
+        {/* Input cédula */}
+        <div className="mb-5">
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            Número de cédula
+          </label>
+          <input
+            type="text"
+            value={cedula}
+            onChange={e => {
+              setCedula(e.target.value.replace(/\D/g, "").slice(0, 13));
+              setError("");
+            }}
+            placeholder="Ingresa tu cédula"
+            inputMode="numeric"
+            autoFocus
+            className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all"
+          />
+          {error && (
+            <p className="mt-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+        </div>
+
+        {/* Separador */}
+        <p className="text-gray-400 text-xs text-center font-medium uppercase tracking-wider mb-4">
+          Selecciona tu equipo
         </p>
 
+        {/* Botones de canal */}
         <div className="space-y-3">
           <button
             onClick={() => seleccionar("CORPORATIVO")}
-            className="w-full flex items-center gap-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-100 hover:border-indigo-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
+            disabled={!cedulaValida || cargando !== null}
+            className="w-full flex items-center gap-4 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-indigo-100 hover:border-indigo-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
           >
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600">
-              <span className="text-xl">🏢</span>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-indigo-500">
+              {cargando === "CORPORATIVO" ? (
+                <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : (
+                <span className="text-xl">🏢</span>
+              )}
             </div>
             <div className="flex-1">
               <p className="text-indigo-800 font-bold text-base tracking-wide">CORPORATIVO</p>
@@ -46,13 +121,21 @@ export function SelectorCanal() {
 
           <button
             onClick={() => seleccionar("COMERCIAL")}
-            className="w-full flex items-center gap-4 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-100 hover:border-emerald-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
+            disabled={!cedulaValida || cargando !== null}
+            className="w-full flex items-center gap-4 bg-emerald-50 hover:bg-emerald-100  disabled:opacity-50 disabled:cursor-not-allowed border-2 border-emerald-100 hover:border-emerald-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
           >
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-emerald-600">
-              <span className="text-xl">🛒</span>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-emerald-300">
+              {cargando === "COMERCIAL" ? (
+                <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : (
+                <span className="text-xl">🏥</span>
+              )}
             </div>
             <div className="flex-1">
-              <p className="text-emerald-800 font-bold text-base tracking-wide">COMERCIAL</p>
+              <p className="text-emerald-700 font-bold text-base tracking-wide">COMERCIAL</p>
               <p className="text-emerald-400 text-xs mt-0.5">Equipo comercial Farmcorp</p>
             </div>
             <svg className="w-5 h-5 text-emerald-300 group-hover:text-emerald-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

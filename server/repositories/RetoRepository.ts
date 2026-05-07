@@ -11,6 +11,7 @@ export const RetoRepository = {
     monto: number;
     numero_factura?: string;
     descripcion?: string;
+    puntos_a_agregar?: number;
   }): Promise<{ reto: Reto; cartilla: Cartilla }> {
     const retoRepo = AppDataSource.getRepository(Reto);
     const cartillaRepo = AppDataSource.getRepository(Cartilla);
@@ -29,7 +30,7 @@ export const RetoRepository = {
     });
     await retoRepo.save(reto);
 
-    cartilla.puntos = (cartilla.puntos ?? 0) + 1;
+    cartilla.puntos = (cartilla.puntos ?? 0) + (data.puntos_a_agregar ?? 1);
     if (cartilla.puntos >= PUNTOS_COMPLETO && cartilla.estado === "activa") {
       cartilla.estado = "completa";
     }

@@ -137,7 +137,7 @@ routerUsuarios.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// ── Registrar un reto (suma 1 punto a la cartilla) ─────────────────────────────
+// ── Registrar un reto ─────────────────────────────────────────────────────────
 routerUsuarios.post("/reto", async (req: Request, res: Response) => {
   const { cartilla_id, tipo_reto, monto, numero_factura, descripcion } = req.body ?? {};
 
@@ -147,16 +147,24 @@ routerUsuarios.post("/reto", async (req: Request, res: Response) => {
   }
 
   const montoNum = parseFloat(monto);
-  const montoMin = MONTOS_MIN[tipo_reto];
+  let puntos_a_agregar = 1;
 
-  if (!montoMin) {
-    res.status(400).json({ error: "Tipo de reto no válido" });
-    return;
-  }
-
-  if (isNaN(montoNum) || montoNum < montoMin) {
-    res.status(400).json({ error: `El monto mínimo para este reto es $${montoMin}` });
-    return;
+  if (tipo_reto === "cumplimiento") {
+    if (isNaN(montoNum) || montoNum < 100) {
+      res.status(400).json({ error: "El cumplimiento mínimo para acumular puntos es 100%" });
+      return;
+    }
+    puntos_a_agregar = Math.floor((montoNum - 100) / 5) + 1;
+  } else {
+    const montoMin = MONTOS_MIN[tipo_reto];
+    if (!montoMin) {
+      res.status(400).json({ error: "Tipo de reto no válido" });
+      return;
+    }
+    if (isNaN(montoNum) || montoNum < montoMin) {
+      res.status(400).json({ error: `El monto mínimo para este reto es $${montoMin}` });
+      return;
+    }
   }
 
   try {
@@ -166,6 +174,7 @@ routerUsuarios.post("/reto", async (req: Request, res: Response) => {
       monto: montoNum,
       numero_factura: numero_factura?.trim() || undefined,
       descripcion: descripcion?.trim() || undefined,
+      puntos_a_agregar,
     });
 
     res.status(201).json({

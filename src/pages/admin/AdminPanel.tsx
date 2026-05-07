@@ -7,7 +7,20 @@ import type { Farmacia } from "../../lib/types";
 import { adminGetFarmacias, adminCrearFarmacia, adminActualizarFarmacia, adminEliminarFarmacia } from "../../lib/farmacias";
 import { adminGetEstadisticas, adminExportarUsuarios, type UsuarioAdmin } from "../../lib/admin";
 
-type Tab = "estadisticas" | "usuarios" | "farmacias" | "cartillas";
+type Tab = "estadisticas" | "usuarios" | "farmacias" | "cartillas" | "excel";
+
+function formatFecha(fecha: string): string {
+  const d = new Date(fecha);
+  if (isNaN(d.getTime())) return fecha;
+  return d.toLocaleString("es-EC", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).replace(",", "");
+}
 
 type Stats = {
   cartillas_activas: number;
@@ -298,6 +311,15 @@ export function AdminPanel() {
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        </svg>
+      ),
+    },
+    {
+      key: "excel",
+      label: "Excel Comercial",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
         </svg>
       ),
     },
@@ -698,7 +720,7 @@ export function AdminPanel() {
                               {c.estado === "activa" ? "Activa" : c.estado === "completa" ? "Completa" : "Cerrada"}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-xs text-gray-400 hidden sm:table-cell">{c.fecha_inicio}</td>
+                          <td className="px-5 py-3.5 text-xs text-gray-400 hidden sm:table-cell">{formatFecha(c.fecha_inicio)}</td>
                         </tr>
                       ))
                     )}
@@ -716,6 +738,81 @@ export function AdminPanel() {
             />
           </div>
         )}
+        {/* Excel Comercial */}
+        {tab === "excel" && (
+          <div className="max-w-xl mx-auto space-y-4">
+
+            {/* Header */}
+            <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="font-bold text-gray-800 text-base">Carga de datos — Equipo Comercial</h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">Próximamente</span>
+                  </div>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Sube el archivo Excel con el <strong>% de cumplimiento</strong> de los usuarios del canal Comercial.
+                    Los datos se procesarán automáticamente para calcular los puntos y oportunidades de cada vendedor.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Zona de carga */}
+            <div className="bg-white rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Archivo Excel</p>
+
+              {/* Drop zone */}
+              <div className="border-2 border-dashed border-gray-200 rounded-2xl px-6 py-10 flex flex-col items-center gap-3 bg-gray-50/50 cursor-not-allowed opacity-60 select-none">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-gray-500">Arrastra tu archivo aquí</p>
+                  <p className="text-xs text-gray-400 mt-0.5">o haz clic para seleccionar</p>
+                </div>
+                <p className="text-xs text-gray-300 font-mono">.xlsx · .xls</p>
+              </div>
+
+              <button
+                disabled
+                className="mt-4 w-full flex items-center justify-center gap-2 bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl text-sm transition-colors cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Procesar archivo
+              </button>
+            </div>
+
+            {/* Info formato TODO: COMENTADO HASTA SABER EL FORMATO*/}
+            {/*<div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Formato esperado</p>
+              <div className="space-y-2">
+                {["Cédula del vendedor", "% Cumplimiento — Utilidad", "% Cumplimiento — Productos Focos", "% Cumplimiento — Volumen", "% Cumplimiento — Líneas Estratégicas"].map((col, i) => (
+                  <div key={col} className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-lg bg-[#f0f0f8] text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="text-sm text-gray-600">{col}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-300 mt-4">
+                * El formato exacto de columnas puede variar. Se definirá junto al equipo antes de habilitar la carga.
+              </p>
+            </div>*/}
+
+          </div>
+        )}
+
       </main>
 
       {/* Modal crear / editar farmacia */}
