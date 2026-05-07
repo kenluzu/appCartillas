@@ -24,8 +24,8 @@ const RETO_CONFIG: Record<TipoReto, {
   borderColor: string;
 }> = {
   contact_center: {
-    titulo: "Contact Center",
-    subtitulo: "Compras > $20",
+    titulo: "Compras C.C",
+    subtitulo: "Compras >= $20",
     icono: "📞",
     montoMin: 20,
     labelExtra: "",
@@ -81,6 +81,7 @@ export function Retos() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const [exito, setExito] = useState<string | null>(null);
+  const [cartillaExpandida, setCartillaExpandida] = useState(true);
 
   if (!usuario || !cartilla) return null;
 
@@ -173,6 +174,77 @@ export function Retos() {
 
       <div className="max-w-sm mx-auto space-y-4 mt-13">
 
+        {/* ── Cartilla activa (colapsable) ── */}
+        <div
+          className="rounded-2xl overflow-hidden shadow-lg border border-white/20"
+          style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)" }}
+        >
+          {/* Cabecera — siempre visible */}
+          <button
+            onClick={() => setCartillaExpandida(v => !v)}
+            className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer"
+          >
+            <div className="flex gap-1 shrink-0">
+              {Array.from({ length: 10 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${i < puntos ? "bg-green-500" : "bg-gray-200"}`}
+                />
+              ))}
+            </div>
+            <span className="flex-1 text-left text-sm font-semibold text-gray-700 tabular-nums">
+              {puntos}/10 pts
+            </span>
+            {completa && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 shrink-0">
+                Completa 🎉
+              </span>
+            )}
+            <svg
+              className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${cartillaExpandida ? "rotate-180" : ""}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Contenido expandido */}
+          {cartillaExpandida && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+              {/* Grid de casillas */}
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`aspect-square rounded-lg flex items-center justify-center text-base ${i < puntos ? "bg-green-500 shadow-sm" : "bg-gray-100 border-2 border-dashed border-gray-200"}`}
+                  >
+                    {i < puntos ? "⭐" : <span className="text-xs text-gray-300 font-mono">{i + 1}</span>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Info y acciones */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  Inicio: {cartilla.fecha_inicio}
+                </p>
+                <button
+                  onClick={() => navigate("/cartilla")}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                >
+                  Ver detalle →
+                </button>
+              </div>
+
+              {completa && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-2.5 text-xs text-yellow-800 font-medium text-center">
+                  ¡Cartilla completa! Ve al detalle para coordinar tu premio.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* ── Cards de retos ── */}
         <div>
        
@@ -207,24 +279,6 @@ export function Retos() {
 
         {/* ── Accesos ── */}
         <div className="space-y-2.5">
-          <button
-            onClick={() => navigate("/cartilla")}
-            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-[0.99] border border-white/60"
-            style={{ background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)" }}
-          >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-100 shrink-0">
-              <svg className="w-4.5 h-4.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-800 text-sm">Ver mi cartilla</p>
-              <p className="text-gray-400 text-xs">{puntos}/10 pts · {cartilla.estado}</p>
-            </div>
-            <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
 
           <button
             onClick={() => navigate("/historial")}

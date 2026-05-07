@@ -24,7 +24,7 @@ export function SelectorCanal() {
         </div>
 
         <p className="text-gray-500 text-center text-sm mb-5">
-          Selecciona tu canal para continuar
+          Selecciona tu equipo para continuar
         </p>
 
         <div className="space-y-3">
@@ -37,7 +37,7 @@ export function SelectorCanal() {
             </div>
             <div className="flex-1">
               <p className="text-indigo-800 font-bold text-base tracking-wide">CORPORATIVO</p>
-              <p className="text-indigo-400 text-xs mt-0.5">Canal corporativo Farmcorp</p>
+              <p className="text-indigo-400 text-xs mt-0.5">Equipo corporativo Farmcorp</p>
             </div>
             <svg className="w-5 h-5 text-indigo-300 group-hover:text-indigo-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -53,7 +53,7 @@ export function SelectorCanal() {
             </div>
             <div className="flex-1">
               <p className="text-emerald-800 font-bold text-base tracking-wide">COMERCIAL</p>
-              <p className="text-emerald-400 text-xs mt-0.5">Canal comercial Farmcorp</p>
+              <p className="text-emerald-400 text-xs mt-0.5">Equipo comercial Farmcorp</p>
             </div>
             <svg className="w-5 h-5 text-emerald-300 group-hover:text-emerald-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 
 const TOTAL_PUNTOS = 10;
-const WHATSAPP_ADMIN = "593XXXXXXXXX"; // Reemplazar con el número real del administrador
+const WHATSAPP_ADMIN = "593983621347";  // número del administrador
 
 export function Cartilla() {
   const { usuario, cartilla, setCartilla, clearUserSession } = useApp();

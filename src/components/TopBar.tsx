@@ -17,7 +17,7 @@ export function TopBar({ nombre, apellido, cedula, canal, puntos, accion }: TopB
       <div
         className="w-full max-w-3xl flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl"
         style={{
-          background: "rgba(10,10,16,0.88)",
+          background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(24px)",
           border: "1px solid rgba(255,255,255,0.10)",
         }}
@@ -29,13 +29,13 @@ export function TopBar({ nombre, apellido, cedula, canal, puntos, accion }: TopB
 
         {/* Nombre + cédula + canal */}
         <div className="min-w-0 flex-1">
-          <p className="text-white font-bold text-sm sm:text-base leading-tight truncate">
+          <p className="text-black/80 font-bold text-sm sm:text-base leading-tight truncate">
             {nombre} {apellido}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-white/40 text-[11px] font-mono">{cedula}</span>
+            <span className="text-black/40 text-[11px] font-mono">{cedula}</span>
             {canal && (
-              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0 ${canal === "CORPORATIVO" ? "bg-indigo-500/30 text-indigo-300" : "bg-emerald-500/30 text-emerald-300"}`}>
+              <span className={`text-[9px] sm:text-[10px] text-white font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0 ${canal === "CORPORATIVO" ? "bg-indigo-500/80 text-indigo-800" : "bg-emerald-500/80 text-emerald-800"}`}>
                 {canal}
               </span>
             )}
@@ -45,20 +45,7 @@ export function TopBar({ nombre, apellido, cedula, canal, puntos, accion }: TopB
         {/* Divisor — solo visible cuando hay progreso */}
         <div className="hidden sm:block w-px h-8 bg-white/10 shrink-0" />
 
-        {/* Progreso cartilla — oculto en mobile */}
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <div className="flex gap-1">
-            {Array.from({ length: 10 }, (_, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full transition-colors ${i < puntos ? "bg-yellow-400" : "bg-white/15"}`}
-              />
-            ))}
-          </div>
-          <span className="text-white/50 text-xs font-mono tabular-nums">{puntos}/10</span>
-        </div>
-
-        {/* Divisor */}
+        
         <div className="w-px h-8 bg-white/10 shrink-0" />
 
         {/* Botón acción */}
