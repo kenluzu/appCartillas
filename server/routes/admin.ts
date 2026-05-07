@@ -223,12 +223,12 @@ routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
   const estado = req.query.estado as string | undefined;
   const busqueda = (req.query.busqueda as string) || undefined;
   const pagina = Math.max(1, parseInt((req.query.pagina as string) ?? "1") || 1);
-  const limite = 20;
+  const limite = Math.min(9999, Math.max(1, parseInt((req.query.limite as string) ?? "20") || 20));
 
   try {
     let sql = `
       SELECT
-        c.id, c.usuario_id, c.puntos, c.estado, c.fecha_inicio,
+        c.id, c.usuario_id, c.puntos, c.estado, c.fecha_inicio, c.foto_url,
         u.cedula, u.nombre, u.apellido, u.telefono,
         (SELECT COUNT(*) FROM retos r WHERE r.cartilla_id = c.id) AS total_retos
       FROM cartillas c
@@ -256,16 +256,17 @@ routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
 
     res.json({
       datos: datos.map(row => ({
-        id:          Number(row["id"]),
-        usuario_id:  Number(row["usuario_id"]),
-        cedula:      row["cedula"],
-        nombre:      row["nombre"],
-        apellido:    row["apellido"] ?? "",
-        telefono:    row["telefono"] ?? "",
-        puntos:      Number(row["puntos"]),
-        estado:      row["estado"],
+        id:           Number(row["id"]),
+        usuario_id:   Number(row["usuario_id"]),
+        cedula:       row["cedula"],
+        nombre:       row["nombre"],
+        apellido:     row["apellido"] ?? "",
+        telefono:     row["telefono"] ?? "",
+        puntos:       Number(row["puntos"]),
+        estado:       row["estado"],
         fecha_inicio: row["fecha_inicio"],
-        total_retos: Number(row["total_retos"]),
+        total_retos:  Number(row["total_retos"]),
+        foto_url:     row["foto_url"] ?? null,
       })),
       total,
       pagina,
@@ -275,6 +276,38 @@ routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[admin/cartillas] Error:", err);
     res.status(500).json({ error: "Error al obtener cartillas" });
+  }
+});
+
+routerAdmin.patch("/cartillas/:id", async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const { estado, foto_url } = req.body ?? {};
+
+  if (estado && estado !== "cerrada") {
+    res.status(400).json({ error: "Solo se puede cambiar el estado a 'cerrada'" });
+    return;
+  }
+
+  try {
+    const cartillaRepo = AppDataSource.getRepository(Cartilla);
+    const cartilla = await cartillaRepo.findOne({ where: { id } });
+    if (!cartilla) { res.status(404).json({ error: "Cartilla no encontrada" }); return; }
+
+    if (estado === "cerrada" && cartilla.estado === "activa" && cartilla.puntos < 10) {
+      res.status(400).json({ error: "No se puede cerrar una cartilla incompleta" });
+      return;
+    }
+
+    if (estado) cartilla.estado = estado as "cerrada";
+    if (foto_url !== undefined) cartilla.foto_url = foto_url || null;
+
+    await cartillaRepo.save(cartilla);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[admin/cartillas/patch] Error:", err);
+    res.status(500).json({ error: "Error al actualizar cartilla" });
   }
 });
 

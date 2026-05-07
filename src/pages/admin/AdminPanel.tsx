@@ -5,9 +5,9 @@ import * as XLSX from "xlsx";
 import { useApp } from "../../context/AppContext";
 import type { Farmacia } from "../../lib/types";
 import { adminGetFarmacias, adminCrearFarmacia, adminActualizarFarmacia, adminEliminarFarmacia } from "../../lib/farmacias";
-import { adminGetEstadisticas, adminExportarUsuarios, type UsuarioAdmin } from "../../lib/admin";
+import { adminGetEstadisticas } from "../../lib/admin";
 
-type Tab = "estadisticas" | "usuarios" | "farmacias" | "cartillas" | "excel";
+type Tab = "estadisticas" | "farmacias" | "puntaje" | "excel";
 
 function formatFecha(fecha: string): string {
   const d = new Date(fecha);
@@ -57,7 +57,6 @@ export function AdminPanel() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("estadisticas");
   const [stats, setStats] = useState<Stats | null>(null);
-  const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
   const [cartillas, setCartillas] = useState<CartillaAdmin[]>([]);
   const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -67,12 +66,6 @@ export function AdminPanel() {
   const [statsError, setStatsError] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [paginaUsuarios, setPaginaUsuarios] = useState(1);
-  const [totalUsuarios, setTotalUsuarios] = useState(0);
-  const [totalPaginasUsuarios, setTotalPaginasUsuarios] = useState(0);
-  const [cargandoUsuarios, setCargandoUsuarios] = useState(false);
-  const [errorUsuarios, setErrorUsuarios] = useState("");
   // Cartillas tab state
   const [filtroEstadoCartilla, setFiltroEstadoCartilla] = useState<"todos" | "activa" | "completa" | "cerrada">("todos");
   const [busquedaCartilla, setBusquedaCartilla] = useState("");
@@ -94,19 +87,12 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (tab === "estadisticas") loadStats();
-    if (tab === "usuarios") loadUsuarios(1, busqueda);
-    if (tab === "cartillas") loadCartillas(1, busquedaCartilla, filtroEstadoCartilla);
+    if (tab === "puntaje") loadCartillas(1, busquedaCartilla, filtroEstadoCartilla);
     if (tab === "farmacias") loadFarmacias();
   }, [tab]);
 
   useEffect(() => {
-    if (tab !== "usuarios") return;
-    const timer = setTimeout(() => loadUsuarios(1, busqueda), 400);
-    return () => clearTimeout(timer);
-  }, [busqueda]);
-
-  useEffect(() => {
-    if (tab !== "cartillas") return;
+    if (tab !== "puntaje") return;
     const timer = setTimeout(() => loadCartillas(1, busquedaCartilla, filtroEstadoCartilla), 400);
     return () => clearTimeout(timer);
   }, [busquedaCartilla, filtroEstadoCartilla]);
@@ -123,27 +109,6 @@ export function AdminPanel() {
       setStatsError(true);
     } finally {
       setLoadingStats(false);
-    }
-  }
-
-  async function loadUsuarios(pagina: number = 1, busq: string = busqueda) {
-    setCargandoUsuarios(true);
-    setErrorUsuarios("");
-    try {
-      const params = new URLSearchParams({ pagina: String(pagina), limite: "20" });
-      if (busq.trim()) params.set("busqueda", busq.trim());
-      const res = await fetch(`/api/admin/usuarios?${params}`, { headers: authHeaders() });
-      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setUsuarios(data.datos);
-      setTotalUsuarios(data.total);
-      setTotalPaginasUsuarios(data.totalPaginas);
-      setPaginaUsuarios(data.pagina);
-    } catch {
-      setErrorUsuarios("Error al obtener usuarios");
-    } finally {
-      setCargandoUsuarios(false);
     }
   }
 
@@ -251,24 +216,32 @@ export function AdminPanel() {
     navigate("/admin");
   }
 
-  async function descargarExcel() {
+  async function descargarExcelCartillas() {
     const token = getToken();
     if (!token) { handleUnauthorized(); return; }
     setCargando(true);
     try {
-      const todos = await adminExportarUsuarios(token);
-      const data = todos.map(u => ({
-        "Cédula":   u.cedula,
-        "Nombre":   u.nombre,
-        "Apellido": u.apellido,
-        "Teléfono": u.telefono,
-        "Puntos":   u.puntos,
-        "Estado":   u.cartilla_estado,
+      const params = new URLSearchParams({ pagina: "1", limite: "9999" });
+      if (filtroEstadoCartilla !== "todos") params.set("estado", filtroEstadoCartilla);
+      if (busquedaCartilla.trim()) params.set("busqueda", busquedaCartilla.trim());
+      const res = await fetch(`/api/admin/cartillas?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
+      if (!res.ok) throw new Error();
+      const data = await res.json() as { datos: CartillaAdmin[] };
+      const filas = data.datos.map(c => ({
+        "Cédula":      c.cedula,
+        "Nombre":      c.nombre,
+        "Apellido":    c.apellido,
+        "Teléfono":    c.telefono,
+        "Puntos":      c.puntos,
+        "Estado":      c.estado,
+        "Retos":       c.total_retos,
+        "Inicio":      formatFecha(c.fecha_inicio),
       }));
-      const ws = XLSX.utils.json_to_sheet(data);
+      const ws = XLSX.utils.json_to_sheet(filas);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Usuarios");
-      XLSX.writeFile(wb, "usuarios_ponte_la_10.xlsx");
+      XLSX.utils.book_append_sheet(wb, ws, "Cartillas");
+      XLSX.writeFile(wb, "cartillas_ponte_la_10.xlsx");
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "UNAUTHORIZED") { handleUnauthorized(); return; }
       setMensaje("Error al exportar: " + (e instanceof Error ? e.message : "Error desconocido"));
@@ -288,15 +261,6 @@ export function AdminPanel() {
       ),
     },
     {
-      key: "usuarios",
-      label: "Usuarios",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.95 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-        </svg>
-      ),
-    },
-    {
       key: "farmacias",
       label: "Farmacias",
       icon: (
@@ -306,8 +270,8 @@ export function AdminPanel() {
       ),
     },
     {
-      key: "cartillas",
-      label: "Cartillas",
+      key: "puntaje",
+      label: "Puntaje",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
@@ -482,108 +446,6 @@ export function AdminPanel() {
           </div>
         )}
 
-        {/* Usuarios */}
-        {tab === "usuarios" && (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre o cédula..."
-                  value={busqueda}
-                  onChange={e => setBusqueda(e.target.value)}
-                  disabled={cargandoUsuarios}
-                  className="w-full bg-white rounded-xl pl-10 pr-4 py-2.5 text-sm shadow-[0_2px_8px_rgba(0,0,0,0.06)] border-0 focus:outline-none focus:ring-2 focus:ring-violet-400/30 transition-all duration-200 placeholder:text-gray-300 disabled:opacity-50"
-                />
-              </div>
-              <button
-                onClick={descargarExcel}
-                className="flex items-center gap-1.5 bg-white hover:bg-[#f9f9fd] text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 whitespace-nowrap cursor-pointer"
-              >
-                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                Excel
-              </button>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-[#f0f0f8]">
-                      <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Cédula</th>
-                      <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Nombre</th>
-                      <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Teléfono</th>
-                      <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Puntos</th>
-                      <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f0f0f8]">
-                    {cargandoUsuarios ? (
-                      <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-300 text-sm">Cargando...</td></tr>
-                    ) : errorUsuarios ? (
-                      <tr><td colSpan={5} className="px-5 py-14 text-center text-red-400 text-sm">{errorUsuarios}</td></tr>
-                    ) : usuarios.length === 0 ? (
-                      <tr><td colSpan={5} className="px-5 py-14 text-center text-gray-300 text-sm">No se encontraron usuarios</td></tr>
-                    ) : (
-                      usuarios.map(u => (
-                        <tr key={u.id} className="hover:bg-[#f9f9fd] transition-colors duration-150">
-                          <td className="px-5 py-3.5 font-mono text-xs text-gray-400">{u.cedula}</td>
-                          <td className="px-5 py-3.5 font-semibold text-gray-800">{u.nombre} {u.apellido}</td>
-                          <td className="px-5 py-3.5 text-gray-400 hidden sm:table-cell">{u.telefono}</td>
-                          <td className="px-5 py-3.5">
-                            {u.puntos != null ? (
-                              <span className="flex items-center gap-2">
-                                <span className="font-bold text-gray-700 tabular-nums w-6 text-right">{u.puntos}</span>
-                                <span className="text-gray-300 text-xs">/ 10</span>
-                                <div className="w-16 h-1.5 rounded-full bg-[#f0f0f8] overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full bg-emerald-400 transition-all duration-500"
-                                    style={{ width: `${Math.min(100, (u.puntos / 10) * 100)}%` }}
-                                  />
-                                </div>
-                              </span>
-                            ) : (
-                              <span className="text-gray-200">—</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3.5">
-                            {u.cartilla_estado ? (
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                u.cartilla_estado === "completa"
-                                  ? "bg-amber-50 text-amber-600"
-                                  : u.cartilla_estado === "cerrada"
-                                  ? "bg-slate-100 text-slate-500"
-                                  : "bg-emerald-50 text-emerald-600"
-                              }`}>
-                                {u.cartilla_estado === "activa" ? "Activa" : u.cartilla_estado === "completa" ? "Completa" : "Cerrada"}
-                              </span>
-                            ) : (
-                              <span className="text-gray-200">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <Paginacion
-              paginaActual={paginaUsuarios}
-              totalPaginas={totalPaginasUsuarios || 1}
-              total={totalUsuarios}
-              limite={20}
-              onChange={pagina => loadUsuarios(pagina, busqueda)}
-            />
-          </div>
-        )}
-
         {/* Farmacias */}
         {tab === "farmacias" && (
           <div className="space-y-3">
@@ -640,8 +502,8 @@ export function AdminPanel() {
           </div>
         )}
 
-        {/* Cartillas */}
-        {tab === "cartillas" && (
+        {/* Puntaje */}
+        {tab === "puntaje" && (
           <div className="space-y-3">
             {/* Filtros */}
             <div className="flex flex-wrap gap-2">
@@ -667,6 +529,16 @@ export function AdminPanel() {
                 <option value="completa">Completas</option>
                 <option value="cerrada">Cerradas</option>
               </select>
+              <button
+                onClick={descargarExcelCartillas}
+                disabled={cargando}
+                className="flex items-center gap-1.5 bg-white hover:bg-[#f9f9fd] disabled:opacity-50 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 whitespace-nowrap cursor-pointer disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Excel
+              </button>
             </div>
 
             {/* Tabla */}

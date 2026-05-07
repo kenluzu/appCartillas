@@ -16,4 +16,7 @@ export class Cartilla {
 
   @Column({ type: "date", nullable: true })
   fecha_inicio!: string;
+
+  @Column({ type: "varchar", length: 500, nullable: true })
+  foto_url!: string | null;
 }
