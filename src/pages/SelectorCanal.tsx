@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
+import fondoWeb from "../assets/fondo-web.jpg";
+import fondoResponsive from "../assets/fondo-responsive.jpg";
 
 export function SelectorCanal() {
   const { setCanal, setUsuario, setCartilla, setRetiro } = useApp();
@@ -50,107 +52,129 @@ export function SelectorCanal() {
 
   const cedulaValida = cedula.trim().length > 0;
 
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
+    <div
+      className="min-h-screen flex flex-col justify-end pb-10 px-4"
+      style={{
+        backgroundImage: `url(${isMobile ? fondoResponsive : fondoWeb})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* Tarjeta horizontal en desktop, vertical en móvil */}
+      <div className="w-full max-w-3xl mx-auto bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 md:p-8">
 
-        {/* Encabezado */}
-        <div className="text-center mb-7">
-          <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">
-            ¡Ponte la <span className="text-yellow-600">10</span>!
-          </h1>
-          <p className="text-gray-500 text-sm mt-1 font-medium tracking-wide uppercase">
-            Farmcorp · Programa de retos
-          </p>
-        </div>
+        {/* Layout: columna izquierda (header + input) | columna derecha (botones) */}
+        <div className="flex flex-col md:flex-row md:gap-8 md:items-start">
 
-        {/* Input cédula */}
-        <div className="mb-5">
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-            Número de cédula
-          </label>
-          <input
-            type="text"
-            value={cedula}
-            onChange={e => {
-              setCedula(e.target.value.replace(/\D/g, "").slice(0, 13));
-              setError("");
-            }}
-            placeholder="Ingresa tu cédula"
-            inputMode="numeric"
-            autoFocus
-            className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all"
-          />
-          {error && (
-            <p className="mt-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
+          {/* Izquierda: encabezado + input */}
+          <div className="flex-1 mb-5 md:mb-0">
+            <div className="mb-5">
+              <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">
+                ¡Ponte la <span className="text-yellow-600">10</span>!
+              </h1>
+              <p className="text-gray-500 text-sm mt-1 font-medium tracking-wide uppercase">
+                Programa de retos
+              </p>
+            </div>
+
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Número de cédula
+            </label>
+            <input
+              type="text"
+              value={cedula}
+              onChange={e => {
+                setCedula(e.target.value.replace(/\D/g, "").slice(0, 13));
+                setError("");
+              }}
+              placeholder="Ingresa tu cédula"
+              inputMode="numeric"
+              autoFocus
+              className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all"
+            />
+            {error && (
+              <p className="mt-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
+          </div>
+
+          {/* Divisor vertical en desktop */}
+          <div className="hidden md:block w-px bg-gray-200 self-stretch" />
+
+          {/* Derecha: selección de equipo */}
+          <div className="flex-1">
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">
+              Selecciona tu equipo
             </p>
-          )}
-        </div>
 
-        {/* Separador */}
-        <p className="text-gray-400 text-xs text-center font-medium uppercase tracking-wider mb-4">
-          Selecciona tu equipo
-        </p>
-
-        {/* Botones de canal */}
-        <div className="space-y-3">
-          <button
-            onClick={() => seleccionar("CORPORATIVO")}
-            disabled={!cedulaValida || cargando !== null}
-            className="w-full flex items-center gap-4 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-indigo-100 hover:border-indigo-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
-          >
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-indigo-500">
-              {cargando === "CORPORATIVO" ? (
-                <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            <div className="space-y-3">
+              <button
+                onClick={() => seleccionar("CORPORATIVO")}
+                disabled={!cedulaValida || cargando !== null}
+                className="w-full flex items-center gap-4 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-indigo-100 hover:border-indigo-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
+              >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-indigo-500">
+                  {cargando === "CORPORATIVO" ? (
+                    <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                  ) : (
+                    <span className="text-xl">🏢</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-indigo-800 font-bold text-base tracking-wide">CORPORATIVO</p>
+                  <p className="text-indigo-400 text-xs mt-0.5">Equipo corporativo Farmcorp</p>
+                </div>
+                <svg className="w-5 h-5 text-indigo-300 group-hover:text-indigo-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-              ) : (
-                <span className="text-xl">🏢</span>
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="text-indigo-800 font-bold text-base tracking-wide">CORPORATIVO</p>
-              <p className="text-indigo-400 text-xs mt-0.5">Equipo corporativo Farmcorp</p>
-            </div>
-            <svg className="w-5 h-5 text-indigo-300 group-hover:text-indigo-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+              </button>
 
-          <button
-            onClick={() => seleccionar("COMERCIAL")}
-            disabled={!cedulaValida || cargando !== null}
-            className="w-full flex items-center gap-4 bg-emerald-50 hover:bg-emerald-100  disabled:opacity-50 disabled:cursor-not-allowed border-2 border-emerald-100 hover:border-emerald-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
-          >
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-emerald-300">
-              {cargando === "COMERCIAL" ? (
-                <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              <button
+                onClick={() => seleccionar("COMERCIAL")}
+                disabled={!cedulaValida || cargando !== null}
+                className="w-full flex items-center gap-4 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-emerald-100 hover:border-emerald-300 rounded-2xl px-5 py-4 text-left transition-all duration-200 cursor-pointer group"
+              >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-emerald-300">
+                  {cargando === "COMERCIAL" ? (
+                    <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                  ) : (
+                    <span className="text-xl">🏥</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-emerald-700 font-bold text-base tracking-wide">COMERCIAL</p>
+                  <p className="text-emerald-400 text-xs mt-0.5">Equipo comercial Farmcorp</p>
+                </div>
+                <svg className="w-5 h-5 text-emerald-300 group-hover:text-emerald-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-              ) : (
-                <span className="text-xl">🏥</span>
-              )}
+              </button>
             </div>
-            <div className="flex-1">
-              <p className="text-emerald-700 font-bold text-base tracking-wide">COMERCIAL</p>
-              <p className="text-emerald-400 text-xs mt-0.5">Equipo comercial Farmcorp</p>
-            </div>
-            <svg className="w-5 h-5 text-emerald-300 group-hover:text-emerald-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate("/admin")}
-            className="text-xs text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
-          >
-            Administrador
-          </button>
+            <div className="mt-5 text-center">
+              <button
+                onClick={() => navigate("/admin")}
+                className="text-xs text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
+              >
+                Administrador
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

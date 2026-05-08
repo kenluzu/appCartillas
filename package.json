@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"set NODE_OPTIONS=--env-file=.env.development && tsx watch server/index.ts\" \"vite --host\"",
+    "dev": "concurrently \"tsx watch server/index.ts\" \"vite --host\"",
     "build": "vite build",
     "start": "NODE_ENV=production tsx server/index.ts"
   },
