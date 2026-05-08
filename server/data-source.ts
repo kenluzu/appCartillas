@@ -21,3 +21,20 @@ export const AppDataSource = new DataSource({
     trustServerCertificate: true,
   },
 });
+
+export const DatamartDataSource = new DataSource({
+  type: "mssql",
+  host: process.env.DB_DATAMART_HOST,
+  domain: process.env.DB_DATAMART_DOMAIN,
+  port: Number(process.env.DB_DATAMART_PORT ?? 1433),
+  username: process.env.DB_DATAMART_USER,
+  password: process.env.DB_DATAMART_PASSWORD,
+  database: process.env.DB_DATAMART_NAME,
+  entities: [],
+  synchronize: false,
+  logging: process.env.NODE_ENV !== "production",
+  options: {
+    encrypt: false,
+    trustServerCertificate: true,
+  },
+});

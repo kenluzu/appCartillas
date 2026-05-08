@@ -42,6 +42,7 @@ type CartillaAdmin = {
   estado: "activa" | "completa" | "cerrada";
   fecha_inicio: string;
   total_retos: number;
+  url_imagen: string | null;
 };
 
 function getToken(): string | null {
@@ -73,6 +74,8 @@ export function AdminPanel() {
   const [totalCartillas, setTotalCartillas] = useState(0);
   const [totalPaginasCartillas, setTotalPaginasCartillas] = useState(0);
   const [cargandoCartillas, setCargandoCartillas] = useState(false);
+  const [urlMap, setUrlMap] = useState<Record<number, string>>({});
+  const [savingCartillaId, setSavingCartillaId] = useState<number | null>(null);
 
   function handleUnauthorized() {
     localStorage.removeItem("admin_token");
@@ -125,11 +128,16 @@ export function AdminPanel() {
       const res = await fetch(`/api/admin/cartillas?${params}`, { headers: authHeaders() });
       if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
       if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await res.json() as { datos: CartillaAdmin[]; total: number; totalPaginas: number; pagina: number };
       setCartillas(data.datos);
       setTotalCartillas(data.total);
       setTotalPaginasCartillas(data.totalPaginas);
       setPaginaCartilla(data.pagina);
+      setUrlMap(prev => {
+        const next = { ...prev };
+        data.datos.forEach(c => { next[c.id] = c.url_imagen ?? ""; });
+        return next;
+      });
     } catch {
       setMensaje("Error al cargar cartillas");
     } finally {
@@ -236,6 +244,7 @@ export function AdminPanel() {
         "Puntos":      c.puntos,
         "Estado":      c.estado,
         "Retos":       c.total_retos,
+        "Imagen":      c.url_imagen ?? "",
         "Inicio":      formatFecha(c.fecha_inicio),
       }));
       const ws = XLSX.utils.json_to_sheet(filas);
@@ -247,6 +256,52 @@ export function AdminPanel() {
       setMensaje("Error al exportar: " + (e instanceof Error ? e.message : "Error desconocido"));
     } finally {
       setCargando(false);
+    }
+  }
+
+  async function guardarUrlImagen(cartillaId: number) {
+    const url = (urlMap[cartillaId] ?? "").trim();
+    const cartilla = cartillas.find(c => c.id === cartillaId);
+    if (!cartilla || url === (cartilla.url_imagen ?? "")) return;
+    setSavingCartillaId(cartillaId);
+    try {
+      const res = await fetch(`/api/admin/cartillas/${cartillaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ url_imagen: url }),
+      });
+      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
+      if (!res.ok) throw new Error();
+      const data = await res.json() as { cartilla: { estado: CartillaAdmin["estado"]; url_imagen: string | null } };
+      setCartillas(prev => prev.map(c => c.id === cartillaId
+        ? { ...c, estado: data.cartilla.estado, url_imagen: data.cartilla.url_imagen }
+        : c
+      ));
+      setUrlMap(prev => ({ ...prev, [cartillaId]: data.cartilla.url_imagen ?? "" }));
+    } catch {
+      setMensaje("Error al guardar imagen");
+    } finally {
+      setSavingCartillaId(null);
+    }
+  }
+
+  async function toggleEstado(cartillaId: number, estadoActual: CartillaAdmin["estado"]) {
+    if (estadoActual === "activa") return;
+    const nuevoEstado: CartillaAdmin["estado"] = estadoActual === "completa" ? "cerrada" : "completa";
+    setSavingCartillaId(cartillaId);
+    try {
+      const res = await fetch(`/api/admin/cartillas/${cartillaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
+      if (!res.ok) throw new Error();
+      setCartillas(prev => prev.map(c => c.id === cartillaId ? { ...c, estado: nuevoEstado } : c));
+    } catch {
+      setMensaje("Error al cambiar estado");
+    } finally {
+      setSavingCartillaId(null);
     }
   }
 
@@ -502,7 +557,7 @@ export function AdminPanel() {
           </div>
         )}
 
-        {/* Puntaje */}
+        {/* Cartillas */}
         {tab === "puntaje" && (
           <div className="space-y-3">
             {/* Filtros */}
@@ -552,14 +607,15 @@ export function AdminPanel() {
                       <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Puntos</th>
                       <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Retos</th>
                       <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Estado</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest">Imagen / Enlace</th>
                       <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Inicio</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f0f0f8]">
                     {cargandoCartillas ? (
-                      <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-300 text-sm">Cargando...</td></tr>
+                      <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-300 text-sm">Cargando...</td></tr>
                     ) : cartillas.length === 0 ? (
-                      <tr><td colSpan={6} className="px-5 py-14 text-center text-gray-300 text-sm">No se encontraron cartillas</td></tr>
+                      <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-300 text-sm">No se encontraron cartillas</td></tr>
                     ) : (
                       cartillas.map(c => (
                         <tr key={c.id} className="hover:bg-[#f9f9fd] transition-colors duration-150">
@@ -582,15 +638,61 @@ export function AdminPanel() {
                           </td>
                           <td className="px-5 py-3.5 text-gray-500 tabular-nums">{c.total_retos}</td>
                           <td className="px-5 py-3.5">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                              c.estado === "completa"
-                                ? "bg-amber-50 text-amber-600"
-                                : c.estado === "cerrada"
-                                ? "bg-slate-100 text-slate-500"
-                                : "bg-emerald-50 text-emerald-600"
-                            }`}>
-                              {c.estado === "activa" ? "Activa" : c.estado === "completa" ? "Completa" : "Cerrada"}
-                            </span>
+                            {c.estado === "activa" ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
+                                Activa
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => toggleEstado(c.id, c.estado)}
+                                disabled={savingCartillaId === c.id}
+                                title={c.estado === "completa" ? "Cambiar a Cerrada" : "Cambiar a Completa"}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 ${
+                                  c.estado === "completa"
+                                    ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                }`}
+                              >
+                                {savingCartillaId === c.id ? (
+                                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                  </svg>
+                                )}
+                                {c.estado === "completa" ? "Completa" : "Cerrada"}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-1.5 min-w-[180px]">
+                              <input
+                                type="url"
+                                value={urlMap[c.id] ?? ""}
+                                onChange={e => setUrlMap(prev => ({ ...prev, [c.id]: e.target.value }))}
+                                onBlur={() => guardarUrlImagen(c.id)}
+                                onKeyDown={e => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+                                placeholder="https://..."
+                                disabled={savingCartillaId === c.id}
+                                className="flex-1 bg-[#f9f9fd] rounded-lg px-2.5 py-1.5 text-xs border border-transparent focus:border-violet-300 focus:outline-none focus:bg-white transition-all duration-150 placeholder:text-gray-300 disabled:opacity-50 min-w-0"
+                              />
+                              {(urlMap[c.id] ?? "").trim() && (
+                                <a
+                                  href={urlMap[c.id]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Ver imagen"
+                                  className="shrink-0 p-1 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-500 transition-colors"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
                           </td>
                           <td className="px-5 py-3.5 text-xs text-gray-400 hidden sm:table-cell">{formatFecha(c.fecha_inicio)}</td>
                         </tr>

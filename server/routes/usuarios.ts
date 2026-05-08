@@ -237,7 +237,7 @@ routerUsuarios.get("/historial", async (req: Request, res: Response) => {
 
 // ── Retos de una cartilla específica ───────────────────────────────────────────
 routerUsuarios.get("/retos/:cartillaId", async (req: Request, res: Response) => {
-  const cartillaId = parseInt(req.params.cartillaId);
+  const cartillaId = parseInt(req.params.cartillaId!);
   if (isNaN(cartillaId)) {
     res.status(400).json({ error: "ID inválido" });
     return;

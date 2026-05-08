@@ -5,7 +5,6 @@ import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
 import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
 import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
-import { RetoRepository } from "../repositories/RetoRepository";
 import { PlanRetiro } from "../entities/PlanRetiro";
 import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
 import { AppDataSource } from "../data-source";
@@ -126,7 +125,7 @@ routerAdmin.post("/farmacias", async (req: Request, res: Response) => {
 });
 
 routerAdmin.put("/farmacias/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id!);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   const { nombre, direccion, latitud, longitud, cantidad } = req.body ?? {};
   const updates: Record<string, unknown> = {};
@@ -146,7 +145,7 @@ routerAdmin.put("/farmacias/:id", async (req: Request, res: Response) => {
 });
 
 routerAdmin.delete("/farmacias/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id!);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   try {
     const ok = await FarmaciaRepository.eliminar(id);
@@ -193,7 +192,7 @@ routerAdmin.get("/retiros", async (_req: Request, res: Response) => {
 });
 
 routerAdmin.put("/retiros/:id/entregar", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id!);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   try {
     const result = await PlanRetiroRepository.marcarEntregado(id);
@@ -206,7 +205,7 @@ routerAdmin.put("/retiros/:id/entregar", async (req: Request, res: Response) => 
 });
 
 routerAdmin.put("/retiros/:id/revertir", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id!);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   try {
     const result = await PlanRetiroRepository.revertirEntrega(id);
@@ -228,7 +227,7 @@ routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
   try {
     let sql = `
       SELECT
-        c.id, c.usuario_id, c.puntos, c.estado, c.fecha_inicio, c.foto_url,
+        c.id, c.usuario_id, c.puntos, c.estado, c.fecha_inicio, c.url_imagen,
         u.cedula, u.nombre, u.apellido, u.telefono,
         (SELECT COUNT(*) FROM retos r WHERE r.cartilla_id = c.id) AS total_retos
       FROM cartillas c
@@ -266,7 +265,7 @@ routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
         estado:       row["estado"],
         fecha_inicio: row["fecha_inicio"],
         total_retos:  Number(row["total_retos"]),
-        foto_url:     row["foto_url"] ?? null,
+        url_imagen:   (row["url_imagen"] as string | null) ?? null,
       })),
       total,
       pagina,
@@ -280,31 +279,31 @@ routerAdmin.get("/cartillas", async (req: Request, res: Response) => {
 });
 
 routerAdmin.patch("/cartillas/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id!);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const { estado, foto_url } = req.body ?? {};
-
-  if (estado && estado !== "cerrada") {
-    res.status(400).json({ error: "Solo se puede cambiar el estado a 'cerrada'" });
-    return;
-  }
+  const { url_imagen, estado } = req.body ?? {};
+  const repo = AppDataSource.getRepository(Cartilla);
 
   try {
-    const cartillaRepo = AppDataSource.getRepository(Cartilla);
-    const cartilla = await cartillaRepo.findOne({ where: { id } });
+    const cartilla = await repo.findOneBy({ id });
     if (!cartilla) { res.status(404).json({ error: "Cartilla no encontrada" }); return; }
 
-    if (estado === "cerrada" && cartilla.estado === "activa" && cartilla.puntos < 10) {
-      res.status(400).json({ error: "No se puede cerrar una cartilla incompleta" });
-      return;
+    if (url_imagen !== undefined) {
+      cartilla.url_imagen = url_imagen?.trim() || null;
+      if (cartilla.url_imagen) cartilla.estado = "cerrada";
     }
 
-    if (estado) cartilla.estado = estado as "cerrada";
-    if (foto_url !== undefined) cartilla.foto_url = foto_url || null;
+    if (estado !== undefined) {
+      if (estado !== "completa" && estado !== "cerrada") {
+        res.status(400).json({ error: "Solo se puede cambiar entre 'completa' y 'cerrada'" });
+        return;
+      }
+      cartilla.estado = estado as "completa" | "cerrada";
+    }
 
-    await cartillaRepo.save(cartilla);
-    res.json({ ok: true });
+    await repo.save(cartilla);
+    res.json({ ok: true, cartilla: { id: cartilla.id, estado: cartilla.estado, url_imagen: cartilla.url_imagen } });
   } catch (err) {
     console.error("[admin/cartillas/patch] Error:", err);
     res.status(500).json({ error: "Error al actualizar cartilla" });

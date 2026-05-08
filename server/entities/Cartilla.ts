@@ -18,5 +18,5 @@ export class Cartilla {
   fecha_inicio!: string;
 
   @Column({ type: "varchar", length: 500, nullable: true })
-  foto_url!: string | null;
+  url_imagen!: string | null;
 }

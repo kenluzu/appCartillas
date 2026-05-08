@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import express from "express";
 import path from "path";
-import { AppDataSource } from "./data-source";
+import { AppDataSource, DatamartDataSource } from "./data-source";
 import { routerUsuarios } from "./routes/usuarios";
 import { routerAdmin } from "./routes/admin";
 
@@ -24,7 +24,11 @@ if (isProd) {
 
 AppDataSource.initialize()
   .then(() => {
-    console.log("Conexión a SQL Server establecida");
+    console.log("Conexión a SQL Server (AppDataSource) establecida");
+    return DatamartDataSource.initialize();
+  })
+  .then(() => {
+    console.log("Conexión a SQL Server (DatamartDataSource) establecida");
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });

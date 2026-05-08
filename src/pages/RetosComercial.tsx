@@ -4,7 +4,6 @@ import { TopBar } from "../components/TopBar";
 
 const RETOS_FIJOS = [
   { key: "utilidad",             label: "Utilidad",             icono: "💰" },
-  { key: "productos_focos",      label: "Productos Focos",      icono: "⭐" },
   { key: "volumen",              label: "Volumen",              icono: "📦" },
   { key: "lineas_estrategicas",  label: "Líneas Estratégicas",  icono: "🎯" },
 ];
