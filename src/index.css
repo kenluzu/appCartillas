@@ -1,22 +1,23 @@
 @import "tailwindcss";
 
+@theme {
+  --font-condensed: "Barlow Condensed", system-ui, sans-serif;
+  --font-barlow: "Barlow", system-ui, sans-serif;
+}
+
 @layer base {
   :root {
     @apply text-gray-800 bg-gray-50;
-    font-family: "Source Sans 3", system-ui, sans-serif;
+    font-family: "Barlow", system-ui, sans-serif;
   }
 
   body {
     @apply min-w-[320px] min-h-screen m-0;
-    background-image: url('./assets/fondomundialistahorizontal.jpeg');
+    background-image: url('./assets/fondomundialistahorizontal.png');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
   }
-}
-
-.font-display {
-  font-family: "DM Serif Display", Georgia, serif;
 }
 
 /* Leaflet fix dentro de React */
@@ -26,12 +27,12 @@
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .animate-fade-in-up {
@@ -42,9 +43,9 @@
   animation: slideIn 0.3s ease-out both;
 }
 
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.3s; }
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }

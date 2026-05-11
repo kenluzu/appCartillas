@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
+import { generatePointImages } from "../lib/pointImages";
 
 const TOTAL_PUNTOS = 10;
 const WHATSAPP_ADMIN = "593983621347";  // número del administrador
@@ -10,6 +11,7 @@ export function Cartilla() {
   const navigate = useNavigate();
   const [iniciandoNueva, setIniciandoNueva] = useState(false);
   const [errorNueva, setErrorNueva] = useState("");
+  const pointImages = useMemo(() => generatePointImages(TOTAL_PUNTOS), []);
 
   if (!usuario || !cartilla) return null;
 
@@ -98,11 +100,13 @@ export function Cartilla() {
                   className={`
                     aspect-square rounded-lg flex items-center justify-center text-lg
                     ${lleno
-                      ? "bg-green-500 shadow-sm"
+                      ? "bg-gray-300 shadow-sm"
                       : "bg-gray-100 border-2 border-dashed border-gray-200"}
                   `}
                 >
-                  {lleno ? "⭐" : <span className="text-xs text-gray-300 font-mono">{i + 1}</span>}
+                  {lleno
+                    ? <img src={pointImages[i]!} alt="punto" className="w-full h-full object-contain p-1" />
+                    : <span className="text-xs text-gray-300 font-mono">{i + 1}</span>}
                 </div>
               );
             })}

@@ -12,65 +12,81 @@ type FormState = {
   campo_extra: string;
 };
 
-const RETO_CONFIG: Record<TipoReto, {
+type RetoConfig = {
   titulo: string;
+  descripcion: string;
   subtitulo: string;
-  icono: string;
+  icon: React.ReactNode;
   montoMin: number;
   labelExtra: string;
   labelFactura: string;
-  accent: string;
-  iconBg: string;
-  colorBtn: string;
-  borderColor: string;
-}> = {
+  color: string;
+};
+
+const PhoneIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+  </svg>
+);
+
+const TargetIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+  </svg>
+);
+
+const StarIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.499z" />
+  </svg>
+);
+
+const RETO_CONFIG: Record<TipoReto, RetoConfig> = {
   contact_center: {
-    titulo: "Compras C.C",
+    titulo: "Goleada General",
+    descripcion: "Compras vía Contact Center desde $20",
     subtitulo: "Compras >= $20",
-    icono: "📞",
+    icon: <PhoneIcon />,
     montoMin: 20,
     labelExtra: "",
     labelFactura: "N° de referencia CC",
-    accent: "text-indigo-600",
-    iconBg: "bg-indigo-100",
-    colorBtn: "bg-indigo-600 hover:bg-indigo-700",
-    borderColor: "border-indigo-200",
+    color: "#d45bf8",
   },
   referido: {
-    titulo: "Factura Referido/a",
+    titulo: "Refiere a tu 10",
+    descripcion: "Trae a un referido y suma desde $10",
     subtitulo: "Desde $10",
-    icono: "👥",
+    icon: <UsersIcon />,
     montoMin: 10,
     labelExtra: "Nombre del referido/a",
     labelFactura: "N° de factura",
-    accent: "text-purple-600",
-    iconBg: "bg-purple-100",
-    colorBtn: "bg-purple-600 hover:bg-purple-700",
-    borderColor: "border-purple-200",
+    color: "#ff3030",
   },
   lineas_estrategicas: {
-    titulo: "Líneas Estratégicas",
+    titulo: "Jugada Estratégica",
+    descripcion: "Compras en líneas estratégicas desde $10",
     subtitulo: "Desde $10",
-    icono: "🎯",
+    icon: <TargetIcon />,
     montoMin: 10,
     labelExtra: "Producto / Línea",
     labelFactura: "N° de factura",
-    accent: "text-amber-600",
-    iconBg: "bg-amber-100",
-    colorBtn: "bg-amber-600 hover:bg-amber-700",
-    borderColor: "border-amber-200",
+    color: "#292cd8",
   },
   productos_focos: {
-    titulo: "Productos Focos",
+    titulo: "Enfoca el Arco",
+    descripcion: "Compras en productos focos desde $10",
     subtitulo: "Desde $10",
-    icono: "⭐",
+    icon: <StarIcon />,
     montoMin: 10,
     labelExtra: "Nombre del producto",
     labelFactura: "N° de factura",
-    accent: "text-emerald-600",
-    iconBg: "bg-emerald-100",
-    colorBtn: "bg-emerald-600 hover:bg-emerald-700",
-    borderColor: "border-emerald-200",
+    color: "#22deff",
   },
 };
 
@@ -82,6 +98,7 @@ export function RetosCorporativo() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const [exito, setExito] = useState<string | null>(null);
+  const [hoveredReto, setHoveredReto] = useState<TipoReto | null>(null);
 
   if (!usuario || !cartilla) return null;
 
@@ -163,77 +180,145 @@ export function RetosCorporativo() {
         accion={{ label: "Salir", icono: "salir", onClick: () => { clearUserSession(); navigate("/"); } }}
       />
 
-      <div className="max-w-sm mx-auto space-y-4 mt-13">
-        <CartillaWidget cartilla={cartilla} />
+      <div className="max-w-lg mx-auto space-y-4 mt-6">
 
-        {/* Cards de retos */}
-        <div className="space-y-3">
+        {/* Cartilla de progreso */}
+        <div className="animate-fade-in-up stagger-1">
+          <CartillaWidget cartilla={cartilla} />
+        </div>
+
+        {/* Label — mecánicas */}
+        <div className="animate-fade-in-up stagger-2 pt-1">
+          <p className="font-condensed font-bold text-[12px] tracking-[0.14em] uppercase" style={{ color: "rgba(0,0,0,0.40)" }}>
+            Cómo ganar tickets
+          </p>
+        </div>
+
+        {/* Grid de mecánicas */}
+        <div className="animate-fade-in-up stagger-3">
           <div className="grid grid-cols-2 gap-3">
             {(Object.keys(RETO_CONFIG) as TipoReto[]).map(tipo => {
               const c = RETO_CONFIG[tipo];
+              const hovered = hoveredReto === tipo;
               return (
                 <button
                   key={tipo}
                   onClick={() => abrirModal(tipo)}
                   disabled={completa}
-                  className={`flex flex-col gap-3 p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] border ${c.borderColor}`}
-                  style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)" }}
+                  onMouseEnter={() => setHoveredReto(tipo)}
+                  onMouseLeave={() => setHoveredReto(null)}
+                  className="flex flex-col gap-3 p-[18px] rounded-2xl text-left disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  style={{
+                    background: hovered ? `${c.color}20` : "rgba(255,255,255,0.92)",
+                    border: `1px solid ${hovered ? c.color + "40" : "rgba(0,0,0,0.07)"}`,
+                    backdropFilter: "blur(16px)",
+                    transform: hovered ? "translateY(-2px)" : "translateY(0)",
+                    transition: "all 0.2s ease",
+                    boxShadow: hovered ? `0 8px 24px ${c.color}22` : "0 2px 10px rgba(0,0,0,0.07)",
+                  }}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${c.iconBg}`}>
-                    <span className="text-xl leading-none">{c.icono}</span>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `${c.color}26`, color: c.color }}
+                  >
+                    {c.icon}
                   </div>
                   <div>
-                    <p className={`font-bold text-sm leading-tight ${c.accent}`}>{c.titulo}</p>
-                    <p className="text-gray-400 text-xs mt-0.5 leading-snug">{c.subtitulo}</p>
+                    <p className="font-condensed font-bold text-[16px] leading-tight" style={{ color: c.color }}>
+                      {c.titulo}
+                    </p>
+                    <p className="font-barlow text-[12px] mt-1 leading-[1.55]" style={{ color: "rgba(0,0,0,0.85)" }}>
+                      {c.descripcion}
+                    </p>
                   </div>
                 </button>
               );
             })}
           </div>
+
           {completa && (
-            <p className="text-center text-xs text-white/60 drop-shadow">
+            <p className="text-center font-barlow text-xs mt-3" style={{ color: "rgba(0,0,0,0.42)" }}>
               Cartilla completa — coordina tu premio antes de iniciar una nueva.
             </p>
           )}
         </div>
 
-        {/* Historial */}
-        <button
-          onClick={() => navigate("/historial")}
-          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-[0.99] border border-white/60"
-          style={{ background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)" }}
-        >
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-100 shrink-0">
-            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {/* Label — historial */}
+        <div className="animate-fade-in-up stagger-4 pt-1">
+          <p className="font-condensed font-bold text-[12px] tracking-[0.14em] uppercase" style={{ color: "rgba(0,0,0,0.40)" }}>
+            Mis cartillas
+          </p>
+        </div>
+
+        {/* Card de historial */}
+        <div className="animate-fade-in-up stagger-4">
+          <button
+            onClick={() => navigate("/historial")}
+            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left cursor-pointer"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border: "1px solid rgba(0,0,0,0.07)",
+              backdropFilter: "blur(16px)",
+              transition: "all 0.2s ease",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.07)",
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget;
+              el.style.transform = "translateY(-2px)";
+              el.style.background = "rgba(247,201,72,0.09)";
+              el.style.borderColor = "rgba(212,150,10,0.28)";
+              el.style.boxShadow = "0 8px 24px rgba(212,150,10,0.15)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget;
+              el.style.transform = "translateY(0)";
+              el.style.background = "rgba(255,255,255,0.92)";
+              el.style.borderColor = "rgba(0,0,0,0.07)";
+              el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.07)";
+            }}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "rgba(212,150,10,0.12)", color: "#c8860a" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-condensed font-bold text-[15px] leading-tight" style={{ color: "rgba(0,0,0,0.82)" }}>
+                Historial de cartillas
+              </p>
+              <p className="font-barlow text-[12px] mt-0.5" style={{ color: "rgba(0,0,0,0.42)" }}>
+                Ver todas mis cartillas anteriores
+              </p>
+            </div>
+            <svg className="w-4 h-4 shrink-0" style={{ color: "rgba(0,0,0,0.22)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-gray-800 text-sm">Historial de cartillas</p>
-            <p className="text-gray-400 text-xs">Ver todas mis cartillas anteriores</p>
-          </div>
-          <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Modal */}
       {modalActivo && cfg && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
+          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
           onClick={e => { if (e.target === e.currentTarget) cerrarModal(); }}
         >
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cfg.iconBg}`}>
-                  <span className="text-xl">{cfg.icono}</span>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: `${cfg.color}20`, color: cfg.color }}
+                >
+                  {cfg.icon}
                 </div>
                 <div>
-                  <p className={`font-bold text-base ${cfg.accent}`}>{cfg.titulo}</p>
-                  <p className="text-xs text-gray-400">{cfg.subtitulo}</p>
+                  <p className="font-condensed font-bold text-base" style={{ color: cfg.color }}>{cfg.titulo}</p>
+                  <p className="font-barlow text-xs text-gray-400">{cfg.subtitulo}</p>
                 </div>
               </div>
               <button onClick={cerrarModal} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 cursor-pointer">
@@ -250,19 +335,19 @@ export function RetosCorporativo() {
                     <svg className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                     </svg>
-                    <p className="text-sm text-blue-700 leading-relaxed">
+                    <p className="font-barlow text-sm text-blue-700 leading-relaxed">
                       Este reto se registra automáticamente desde <strong>Neptuno</strong>. No requiere ingreso manual de datos.
                     </p>
                   </div>
-                  <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-2xl cursor-pointer text-sm">
+                  <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">
                     Cerrar
                   </button>
                 </div>
               ) : exito ? (
                 <div className="text-center py-4">
                   <div className="text-5xl mb-3">🎉</div>
-                  <p className="text-emerald-700 font-semibold text-sm leading-relaxed">{exito}</p>
-                  <button onClick={cerrarModal} className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl cursor-pointer text-sm">
+                  <p className="font-barlow text-emerald-700 font-semibold text-sm leading-relaxed">{exito}</p>
+                  <button onClick={cerrarModal} className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">
                     Continuar
                   </button>
                 </div>
@@ -270,29 +355,37 @@ export function RetosCorporativo() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {cfg.labelExtra && (
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelExtra}</label>
-                      <input type="text" value={form.campo_extra} onChange={e => setForm(p => ({ ...p, campo_extra: e.target.value }))} required className="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                      <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelExtra}</label>
+                      <input type="text" value={form.campo_extra} onChange={e => setForm(p => ({ ...p, campo_extra: e.target.value }))} required className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
                     </div>
                   )}
                   {cfg.labelFactura && (
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelFactura}</label>
-                      <input type="text" value={form.numero_factura} onChange={e => setForm(p => ({ ...p, numero_factura: e.target.value }))} required className="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                      <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelFactura}</label>
+                      <input type="text" value={form.numero_factura} onChange={e => setForm(p => ({ ...p, numero_factura: e.target.value }))} required className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                      Monto <span className="normal-case font-normal">(mín. ${cfg.montoMin})</span>
+                    <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+                      Monto <span className="normal-case font-barlow font-normal">(mín. ${cfg.montoMin})</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">$</span>
-                      <input type="number" step="0.01" min={cfg.montoMin} value={form.monto} onChange={e => setForm(p => ({ ...p, monto: e.target.value }))} required placeholder={`${cfg.montoMin}.00`} className="w-full bg-gray-50 rounded-xl pl-8 pr-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                      <input type="number" step="0.01" min={cfg.montoMin} value={form.monto} onChange={e => setForm(p => ({ ...p, monto: e.target.value }))} required placeholder={`${cfg.montoMin}.00`} className="w-full font-barlow bg-gray-50 rounded-xl pl-8 pr-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
                     </div>
                   </div>
-                  {error && <p className="text-red-600 text-xs bg-red-50 rounded-xl p-3 border border-red-100">{error}</p>}
+                  {error && <p className="font-barlow text-red-600 text-xs bg-red-50 rounded-xl p-3 border border-red-100">{error}</p>}
                   <div className="flex gap-2 pt-1">
-                    <button type="button" onClick={cerrarModal} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-2xl cursor-pointer text-sm">Cancelar</button>
-                    <button type="submit" disabled={enviando} className={`flex-1 ${cfg.colorBtn} disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold py-3 rounded-2xl cursor-pointer text-sm`}>
+                    <button type="button" onClick={cerrarModal} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cancelar</button>
+                    <button
+                      type="submit"
+                      disabled={enviando}
+                      className="flex-1 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm disabled:opacity-50 transition-opacity"
+                      style={{
+                        background: cfg.color,
+                        color: cfg.color === "#f7c948" ? "#1a1000" : "#fff",
+                      }}
+                    >
                       {enviando ? "Registrando..." : "Registrar"}
                     </button>
                   </div>
