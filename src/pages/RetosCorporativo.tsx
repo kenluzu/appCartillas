@@ -60,30 +60,30 @@ const RETO_CONFIG: Record<TipoReto, RetoConfig> = {
   },
   referido: {
     titulo: "Refiere a tu 10",
-    descripcion: "Trae a un referido y suma desde $10",
-    subtitulo: "Desde $10",
+    descripcion: "Trae a un referido y suma desde $20",
+    subtitulo: "Desde $20",
     icon: <UsersIcon />,
-    montoMin: 10,
+    montoMin: 20,
     labelExtra: "Nombre del referido/a",
     labelFactura: "N° de factura",
     color: "#ff3030",
   },
   lineas_estrategicas: {
     titulo: "Jugada Estratégica",
-    descripcion: "Compras en líneas estratégicas desde $10",
-    subtitulo: "Desde $10",
+    descripcion: "Compras en líneas estratégicas desde $20",
+    subtitulo: "Desde $20",
     icon: <TargetIcon />,
-    montoMin: 10,
+    montoMin: 20,
     labelExtra: "Producto / Línea",
     labelFactura: "N° de factura",
     color: "#292cd8",
   },
   productos_focos: {
     titulo: "Enfoca el Arco",
-    descripcion: "Compras en productos focos desde $10",
-    subtitulo: "Desde $10",
+    descripcion: "Compras en productos focos desde $20",
+    subtitulo: "Desde $20",
     icon: <StarIcon />,
-    montoMin: 10,
+    montoMin: 20,
     labelExtra: "Nombre del producto",
     labelFactura: "N° de factura",
     color: "#22deff",
@@ -170,7 +170,7 @@ export function RetosCorporativo() {
   const cfg = modalActivo ? RETO_CONFIG[modalActivo] : null;
 
   return (
-    <div className="min-h-screen pt-24 pb-8 px-4">
+    <div className="min-h-screen pt-18 pb-8 px-4">
       <TopBar
         nombre={usuario.nombre}
         apellido={usuario.apellido}

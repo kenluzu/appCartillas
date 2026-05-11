@@ -24,16 +24,6 @@ export function TopBar({ nombre, apellido, cedula, canal, accion }: TopBarProps)
       >
         {/* Izquierda: avatar + nombre + cédula + badge */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div
-            className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-condensed font-bold text-base"
-            style={{
-              background: "linear-gradient(135deg, #f7c948 0%, #e6a817 100%)",
-              color: "#1a1000",
-            }}
-          >
-            {nombre.charAt(0).toUpperCase()}
-          </div>
-
           <div className="min-w-0">
             <p className="font-condensed font-bold text-[18px] leading-tight truncate" style={{ color: "rgba(0,0,0,0.85)" }}>
               {nombre} {apellido}

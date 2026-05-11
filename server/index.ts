@@ -25,10 +25,11 @@ if (isProd) {
 AppDataSource.initialize()
   .then(() => {
     console.log("Conexión a SQL Server (AppDataSource) establecida");
-    return DatamartDataSource.initialize();
+    return DatamartDataSource.initialize().then(() => {
+      console.log("Conexión a SQL Server (DatamartDataSource) establecida");
+    });
   })
   .then(() => {
-    console.log("Conexión a SQL Server (DatamartDataSource) establecida");
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });

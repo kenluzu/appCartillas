@@ -1,14 +1,8 @@
 const POINT_IMAGES = Array.from(
-  { length: 9 },
+  { length: 10 },
   (_, i) => new URL(`../assets/points/Recurso ${i + 1}.png`, import.meta.url).href
 );
 
 export function generatePointImages(count: number): string[] {
-  const result: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const prev: string | undefined = result[i - 1];
-    const available = POINT_IMAGES.filter((img) => img !== prev);
-    result.push(available[Math.floor(Math.random() * available.length)]!);
-  }
-  return result;
+  return Array.from({ length: count }, (_, i) => POINT_IMAGES[i % POINT_IMAGES.length]!);
 }

@@ -1,6 +1,6 @@
-# App de cartillas Fidelización
+# Ponte la 10
 
-Programa de fidelización para farmacias **Farmcorp**. Los clientes acumulan puntos en una cartilla digital de 20 espacios; al completarla, planifican el retiro de una camiseta como premio en la farmacia más cercana.
+Programa de fidelización para farmacias **FarmCorp**. Los clientes acumulan puntos en una cartilla digital de 20 espacios; al completarla, planifican el retiro de una camiseta como premio en la farmacia más cercana.
 
 ## Flujo principal
 
@@ -10,39 +10,43 @@ Ingreso (cédula)
   └── Cliente existente ────────→ Cartilla → (completa) → Planificación → Confirmación
 ```
 
-
 ## Panel admin
 
-Permite ver estadísticas, listar usuarios y retiros, marcar premios como entregados y actualizar stock por farmacia.
+Permite ver estadísticas, listar usuarios y retiros, marcar premios como entregados, gestionar stock por farmacia y exportar CSV.
 
-> Credenciales de prueba: cédula `123` / contraseña `123`
+> Acceso: `admin-login`. Crear admins con `npx tsx scripts/crearAdmin.ts <cedula> <password> [nombre]`
 
 ## Stack
 
 | Capa | Tecnología |
 |------|-----------|
-| Runtime & servidor | [Bun](https://bun.sh) |
-| Frontend | React 19 + TypeScript |
+| Servidor | Node.js + Express 4 + `tsx` |
+| Frontend | React 19 SPA |
+| Bundler / dev | Vite 6 |
 | Estilos | TailwindCSS v4 |
-| Mapa | Leaflet 1.9.4 (CDN) |
-| Bundler | Bun nativo (`bun-plugin-tailwind`) |
+| ORM | TypeORM 0.3 (`synchronize: false`) |
+| Base de datos | SQL Server (`mssql` / `tedious`) |
+| Auth admin | JWT 8 h + `bcrypt-ts` |
+| Mapa | Leaflet 1.9 (CDN) |
 
-## Cómo ejecutar
+## Comandos
 
 ```bash
-# Instalar dependencias
-bun install
+npm run dev      # Express :3001 + Vite :3000 en paralelo
+npm run build    # Build de producción → dist/
+npm run start    # Producción: Express sirve dist/
+```
 
-# Servidor de desarrollo con HMR en http://localhost:3000
-bun run dev
+## Variables de entorno
 
-# Build de producción
-bun run build
-
-# Servidor de producción
-bun run start
+```
+DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+JWT_SECRET
+PORT
 ```
 
 ## Notas
 
-- `src/lib/api.ts` es la capa de datos actual con un store en memoria. Es el archivo a reemplazar cuando se integre el backend real.
+- **Puntos a día caído:** DATAMART/NEPTUNO sincroniza con 24 h de retraso; el frontend trata `puntos >= 20 OR estado === "completa"` como cartilla completa.
+- **`src/lib/api.ts`** es mock para estadísticas, retiros, farmacias y stock — reemplazar al conectar endpoints reales.
+- TypeORM no auto-migra; los cambios de esquema requieren `ALTER TABLE` manual en SQL Server.
