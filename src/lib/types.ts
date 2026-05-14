@@ -5,6 +5,7 @@ export type Usuario = {
   apellido: string;
   telefono: string;
   rol: string;
+  cod_cliente: number | null;
 };
 
 export type Cartilla = {

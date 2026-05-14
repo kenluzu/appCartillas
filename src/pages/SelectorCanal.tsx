@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
-import fondoWeb from "../assets/fondo-web.jpg";
+import fondoWeb from "../assets/fondo-web.png";
 import fondoResponsive from "../assets/fondo-responsive.jpg";
 
 export function SelectorCanal() {
@@ -32,7 +32,7 @@ export function SelectorCanal() {
         throw new Error((data.error as string | undefined) ?? "Error al consultar");
       }
 
-      const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string };
+      const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string, cod_cliente: number | null };
       const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
       setUsuario(usuario);
       setCartilla(cartilla);
@@ -61,30 +61,17 @@ export function SelectorCanal() {
 
   return (
     <div
-      className="min-h-screen flex flex-col justify-end pb-10 px-4"
+      className="min-h-screen flex items-end justify-center pb-12 md:items-center md:justify-end md:pb-0 md:pr-38 px-4"
       style={{
         backgroundImage: `url(${isMobile ? fondoResponsive : fondoWeb})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {/* Tarjeta horizontal en desktop, vertical en móvil */}
-      <div className="w-full max-w-3xl mx-auto bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 md:p-8">
+      <div className="w-full max-w-sm bg-white/75 backdrop-blur-md rounded-3xl shadow-2xl p-6 md:p-8 border border-white/60">
 
-        {/* Layout: columna izquierda (header + input) | columna derecha (botones) */}
-        <div className="flex flex-col md:flex-row md:gap-8 md:items-start">
-
-          {/* Izquierda: encabezado + input */}
-          <div className="flex-1 mb-5 md:mb-0">
-            <div className="mb-5">
-              <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">
-                ¡Ponte la <span className="text-yellow-600">10</span>!
-              </h1>
-              <p className="text-gray-500 text-sm mt-1 font-medium tracking-wide uppercase">
-                Programa de retos
-              </p>
-            </div>
-
+        <div className="flex flex-col gap-5">
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Número de cédula
             </label>
@@ -107,11 +94,8 @@ export function SelectorCanal() {
             )}
           </div>
 
-          {/* Divisor vertical en desktop */}
-          <div className="hidden md:block w-px bg-gray-200 self-stretch" />
-
-          {/* Derecha: selección de equipo */}
-          <div className="flex-1">
+          {/* Selección de equipo */}
+          <div>
             <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">
               Selecciona tu equipo
             </p>

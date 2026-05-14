@@ -24,10 +24,8 @@ export function IngresoCedula() {
       const res = await fetch(`/api/usuarios/validar?cedula=${encodeURIComponent(ced)}`);
       const data = await res.json() as Record<string, unknown>;
 
-      if (res.status === 404) {
-        setError("Cédula no encontrada en el sistema. Comunícate con el administrador.");
-      } else if (res.ok) {
-        const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string };
+      if (res.ok) {
+        const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string; cod_cliente: number | null };
         const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
         setUsuario(usuario);
         setCartilla(cartilla);
@@ -36,12 +34,8 @@ export function IngresoCedula() {
       } else {
         throw new Error((data.error as string | undefined) ?? "Error al consultar");
       }
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message.includes("Cédula no encontrada")) {
-        setError(e.message);
-      } else {
-        setError("Error de conexión. Intenta de nuevo.");
-      }
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
     } finally {
       setCargando(false);
     }

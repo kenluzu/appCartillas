@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { TopBar } from "../components/TopBar";
@@ -51,7 +51,7 @@ const RETO_CONFIG: Record<TipoReto, RetoConfig> = {
   contact_center: {
     titulo: "Goleada General",
     descripcion: "Compras vía Contact Center desde $20",
-    subtitulo: "Compras >= $20",
+    subtitulo: "Desde $20",
     icon: <PhoneIcon />,
     montoMin: 20,
     labelExtra: "",
@@ -90,6 +90,12 @@ const RETO_CONFIG: Record<TipoReto, RetoConfig> = {
   },
 };
 
+type FacturaGoleada = {
+  numero_factura: string;
+  periodo: number;
+  monto_total: number;
+};
+
 export function RetosCorporativo() {
   const { usuario, cartilla, canal, setCartilla, clearUserSession } = useApp();
   const navigate = useNavigate();
@@ -99,17 +105,77 @@ export function RetosCorporativo() {
   const [error, setError] = useState("");
   const [exito, setExito] = useState<string | null>(null);
   const [hoveredReto, setHoveredReto] = useState<TipoReto | null>(null);
+  const [facturasGoleada, setFacturasGoleada] = useState<FacturaGoleada[]>([]);
+  const [facturasEstrategica, setFacturasEstrategica] = useState<FacturaGoleada[]>([]);
+  const [facturasFoco, setFacturasFoco] = useState<FacturaGoleada[]>([]);
+  const [cargandoFacturas, setCargandoFacturas] = useState(false);
+  const [retosReferido, setRetosReferido] = useState<{ id: number; numero_factura: string | null; monto: number; fecha_registro: string }[]>([]);
+  const [cargandoReferidos, setCargandoReferidos] = useState(false);
+
+  useEffect(() => {
+    if (!usuario?.cedula || !cartilla?.id) return;
+    setCargandoFacturas(true);
+    fetch(`/api/usuarios/sincronizar-retos?cod_cliente=${usuario.cod_cliente ?? 0}&cartilla_id=${cartilla.id}`)
+      .then(r => r.json())
+      .then((data: unknown) => {
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          const res = data as {
+            goleada: FacturaGoleada[];
+            estrategica: FacturaGoleada[];
+            foco: FacturaGoleada[];
+            cartilla: { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
+          };
+          setFacturasGoleada(res.goleada ?? []);
+          setFacturasEstrategica(res.estrategica ?? []);
+          setFacturasFoco(res.foco ?? []);
+          if (res.cartilla) setCartilla(res.cartilla);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCargandoFacturas(false));
+  }, []);
 
   if (!usuario || !cartilla) return null;
 
   const puntos = cartilla.puntos ?? 0;
   const completa = cartilla.estado === "completa" || puntos >= 10;
 
+  function renderFacturasList(facturas: FacturaGoleada[], color: string) {
+    if (cargandoFacturas) return <div className="py-8 text-center font-barlow text-sm text-gray-400">Cargando facturas…</div>;
+    if (facturas.length === 0) return <div className="py-8 text-center"><p className="font-barlow text-sm text-gray-400">Sin facturas calificadas en el período.</p></div>;
+    return (
+      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+        {facturas.map((f, i) => (
+          <div key={i} className="flex items-center justify-between rounded-xl px-4 py-3"
+            style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
+            <div>
+              <p className="font-condensed font-bold text-sm leading-tight" style={{ color: "rgba(0,0,0,0.82)" }}>{f.numero_factura}</p>
+              <p className="font-barlow text-xs mt-0.5" style={{ color: "rgba(0,0,0,0.42)" }}>{String(f.periodo).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")}</p>
+            </div>
+            <p className="font-condensed font-bold text-base" style={{ color }}>${Number(f.monto_total).toFixed(2)}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  async function cargarRetosReferido() {
+    if (!cartilla?.id) return;
+    setCargandoReferidos(true);
+    try {
+      const r = await fetch(`/api/usuarios/retos/${cartilla.id}`);
+      const data = await r.json() as { tipo_reto: string; id: number; numero_factura: string | null; monto: number; fecha_registro: string }[];
+      if (Array.isArray(data)) setRetosReferido(data.filter(x => x.tipo_reto === "referido"));
+    } catch { /* silencioso */ }
+    finally { setCargandoReferidos(false); }
+  }
+
   function abrirModal(tipo: TipoReto) {
     setModalActivo(tipo);
     setForm({ monto: "", numero_factura: "", campo_extra: "" });
     setError("");
     setExito(null);
+    if (tipo === "referido") cargarRetosReferido();
   }
 
   function cerrarModal() {
@@ -118,33 +184,28 @@ export function RetosCorporativo() {
     setExito(null);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmitReferido(e: React.FormEvent) {
     e.preventDefault();
-    if (!modalActivo || !cartilla) return;
-
-    const cfg = RETO_CONFIG[modalActivo];
-    const montoNum = parseFloat(form.monto);
-
-    if (isNaN(montoNum) || montoNum < cfg.montoMin) {
-      setError(`El monto mínimo para este reto es $${cfg.montoMin}`);
-      return;
-    }
+    if (!cartilla) return;
 
     const descripcion = form.campo_extra.trim()
-      ? `${cfg.labelExtra}: ${form.campo_extra.trim()}`
+      ? `Nombre del referido/a: ${form.campo_extra.trim()}`
       : undefined;
+
+    if (retosReferido.some(r => r.numero_factura === form.numero_factura.trim())) {
+      setError("Esta factura ya fue registrada en una cartilla.");
+      return;
+    }
 
     setEnviando(true);
     setError("");
     try {
-      const res = await fetch("/api/usuarios/reto", {
+      const res = await fetch("/api/usuarios/reto/referido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cartilla_id: cartilla.id,
-          tipo_reto: modalActivo,
-          monto: montoNum,
-          numero_factura: form.numero_factura.trim() || undefined,
+          numero_factura: form.numero_factura.trim(),
           descripcion,
         }),
       });
@@ -153,12 +214,14 @@ export function RetosCorporativo() {
       if (!res.ok) { setError((data.error as string) ?? "Error al registrar"); return; }
 
       const nuevaCartilla = data.cartilla as typeof cartilla;
+      const monto = data.monto as number;
       setCartilla(nuevaCartilla);
+      await cargarRetosReferido();
 
       if (nuevaCartilla.estado === "completa" || nuevaCartilla.puntos >= 10) {
-        setExito(`¡Felicitaciones! Completaste tu cartilla con ${nuevaCartilla.puntos}/10 puntos. Ve a tu cartilla para coordinar tu premio.`);
+        setExito(`¡Felicitaciones! Completaste tu cartilla con ${nuevaCartilla.puntos}/10 puntos. Factura $${Number(monto).toFixed(2)} validada.`);
       } else {
-        setExito(`¡Punto registrado! Tu cartilla ahora tiene ${nuevaCartilla.puntos}/10 puntos.`);
+        setExito(`¡Punto registrado! Factura $${Number(monto).toFixed(2)} validada. Tu cartilla ahora tiene ${nuevaCartilla.puntos}/10 puntos.`);
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -329,7 +392,25 @@ export function RetosCorporativo() {
             </div>
 
             <div className="px-5 py-5">
-              {modalActivo !== "referido" ? (
+              {modalActivo === "contact_center" ? (
+                <div className="space-y-3">
+                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026 · Compras ≥ $20</p>
+                  {renderFacturasList(facturasGoleada, cfg.color)}
+                  <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
+                </div>
+              ) : modalActivo === "lineas_estrategicas" ? (
+                <div className="space-y-3">
+                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026 · Con productos estratégicos ≥ $20</p>
+                  {renderFacturasList(facturasEstrategica, cfg.color)}
+                  <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
+                </div>
+              ) : modalActivo === "productos_focos" ? (
+                <div className="space-y-3">
+                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026 · Con productos foco ≥ $20</p>
+                  {renderFacturasList(facturasFoco, cfg.color)}
+                  <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
+                </div>
+              ) : modalActivo !== "referido" ? (
                 <div className="space-y-4">
                   <div className="flex gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-4">
                     <svg className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -352,28 +433,33 @@ export function RetosCorporativo() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {cfg.labelExtra && (
+                <div className="space-y-4">
+                  {cargandoReferidos ? (
+                    <p className="font-barlow text-xs text-gray-400 text-center py-2">Cargando registros…</p>
+                  ) : retosReferido.length > 0 && (
                     <div>
-                      <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelExtra}</label>
-                      <input type="text" value={form.campo_extra} onChange={e => setForm(p => ({ ...p, campo_extra: e.target.value }))} required className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                      <p className="font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">Ya registradas</p>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {retosReferido.map(r => (
+                          <div key={r.id} className="flex items-center justify-between rounded-xl px-3 py-2"
+                            style={{ background: `${cfg.color}10`, border: `1px solid ${cfg.color}25` }}>
+                            <p className="font-condensed font-bold text-sm" style={{ color: "rgba(0,0,0,0.75)" }}>{r.numero_factura}</p>
+                            <p className="font-condensed font-bold text-sm" style={{ color: cfg.color }}>${Number(r.monto).toFixed(2)}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {cfg.labelFactura && (
-                    <div>
-                      <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelFactura}</label>
-                      <input type="text" value={form.numero_factura} onChange={e => setForm(p => ({ ...p, numero_factura: e.target.value }))} required className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
-                    </div>
-                  )}
+                <form onSubmit={handleSubmitReferido} className="space-y-3">
                   <div>
-                    <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">
-                      Monto <span className="normal-case font-barlow font-normal">(mín. ${cfg.montoMin})</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">$</span>
-                      <input type="number" step="0.01" min={cfg.montoMin} value={form.monto} onChange={e => setForm(p => ({ ...p, monto: e.target.value }))} required placeholder={`${cfg.montoMin}.00`} className="w-full font-barlow bg-gray-50 rounded-xl pl-8 pr-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
-                    </div>
+                    <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelExtra}</label>
+                    <input type="text" value={form.campo_extra} onChange={e => setForm(p => ({ ...p, campo_extra: e.target.value }))} className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
                   </div>
+                  <div>
+                    <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelFactura}</label>
+                    <input type="text" value={form.numero_factura} onChange={e => setForm(p => ({ ...p, numero_factura: e.target.value }))} required className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                  </div>
+                  <p className="font-barlow text-xs text-gray-400">La factura debe estar dentro del período y ser mayores a $20. El monto se obtiene automáticamente.</p>
                   {error && <p className="font-barlow text-red-600 text-xs bg-red-50 rounded-xl p-3 border border-red-100">{error}</p>}
                   <div className="flex gap-2 pt-1">
                     <button type="button" onClick={cerrarModal} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cancelar</button>
@@ -381,15 +467,13 @@ export function RetosCorporativo() {
                       type="submit"
                       disabled={enviando}
                       className="flex-1 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm disabled:opacity-50 transition-opacity"
-                      style={{
-                        background: cfg.color,
-                        color: cfg.color === "#f7c948" ? "#1a1000" : "#fff",
-                      }}
+                      style={{ background: cfg.color, color: "#fff" }}
                     >
-                      {enviando ? "Registrando..." : "Registrar"}
+                      {enviando ? "Validando..." : "Registrar"}
                     </button>
                   </div>
                 </form>
+                </div>
               )}
             </div>
           </div>

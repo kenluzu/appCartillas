@@ -20,6 +20,7 @@ export const UsuarioRepository = {
     nombre: string;
     apellido: string;
     telefono: string;
+    cod_cliente?: number | null;
   }): Promise<Usuario> {
     const repo = AppDataSource.getRepository(Usuario);
     const usuario = repo.create({
@@ -27,6 +28,7 @@ export const UsuarioRepository = {
       nombre: datos.nombre,
       apellido: datos.apellido,
       telefono: datos.telefono,
+      cod_cliente: datos.cod_cliente ?? null,
     });
     return repo.save(usuario);
   },

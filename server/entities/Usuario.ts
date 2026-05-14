@@ -22,4 +22,7 @@ export class Usuario {
 
   @Column({ type: "varchar", length: 255, nullable: true, select: false })
   password!: string | null;
+
+  @Column({ type: "int", nullable: true })
+  cod_cliente!: number | null;
 }

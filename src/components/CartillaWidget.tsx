@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { generatePointImages } from "../lib/pointImages";
 
-const WHATSAPP_ADMIN = "593983621347";
+const WHATSAPP_ADMIN = "593981034795";
 
 type Cartilla = {
   id: number;

@@ -49,4 +49,12 @@ export const CartillaRepository = {
       .orderBy("c.id", "DESC")
       .getMany();
   },
+
+  async actualizarPuntos(id: number, puntos: number): Promise<Cartilla> {
+    const repo = AppDataSource.getRepository(Cartilla);
+    const cartilla = await repo.findOneByOrFail({ id });
+    cartilla.puntos = puntos;
+    if (puntos >= 10 && cartilla.estado === "activa") cartilla.estado = "completa";
+    return repo.save(cartilla);
+  },
 };

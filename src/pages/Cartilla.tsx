@@ -4,7 +4,7 @@ import { useApp } from "../context/AppContext";
 import { generatePointImages } from "../lib/pointImages";
 
 const TOTAL_PUNTOS = 10;
-const WHATSAPP_ADMIN = "593983621347";  // número del administrador
+const WHATSAPP_ADMIN = "593981034795";  // número del administrador
 
 export function Cartilla() {
   const { usuario, cartilla, setCartilla, clearUserSession } = useApp();
