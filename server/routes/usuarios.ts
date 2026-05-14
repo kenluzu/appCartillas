@@ -227,7 +227,7 @@ routerUsuarios.post("/reto", async (req: Request, res: Response) => {
       monto: montoNum,
       numero_factura: numero_factura?.trim() || undefined,
       descripcion: descripcion?.trim() || undefined,
-      puntos_a_agregar,
+      tickets: puntos_a_agregar,
     });
 
     res.status(201).json({
@@ -242,7 +242,7 @@ routerUsuarios.post("/reto", async (req: Request, res: Response) => {
 
 // ── Registrar reto "Refiere a tu 10" validando factura en Datamart ────────────
 routerUsuarios.post("/reto/referido", async (req: Request, res: Response) => {
-  const { cartilla_id, numero_factura, descripcion } = req.body ?? {};
+  const { cartilla_id, numero_factura, descripcion, cedula_referido, celular_referido } = req.body ?? {};
 
   if (!cartilla_id || !numero_factura?.trim()) {
     res.status(400).json({ error: "cartilla_id y numero_factura son requeridos" });
@@ -272,6 +272,7 @@ routerUsuarios.post("/reto/referido", async (req: Request, res: Response) => {
     }
 
     const monto = Number(rows[0]!.monto_total);
+    const tickets = Math.floor(monto / 20);
 
     const { reto, cartilla } = await RetoRepository.registrar({
       cartilla_id: Number(cartilla_id),
@@ -279,7 +280,9 @@ routerUsuarios.post("/reto/referido", async (req: Request, res: Response) => {
       monto,
       numero_factura: numero_factura.trim(),
       descripcion: descripcion?.trim() || undefined,
-      puntos_a_agregar: 1,
+      tickets,
+      cedula_referido: cedula_referido?.trim() || undefined,
+      celular_referido: celular_referido?.trim() || undefined,
     });
 
     res.status(201).json({

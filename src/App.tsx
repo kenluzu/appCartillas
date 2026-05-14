@@ -4,7 +4,6 @@ import { PrivateUserRoute, PrivateAdminRoute } from "./router/PrivateRoutes";
 import { SelectorCanal } from "./pages/SelectorCanal";
 import { IngresoCedula } from "./pages/IngresoCedula";
 import { Retos } from "./pages/Retos";
-import { Cartilla } from "./pages/Cartilla";
 import { HistorialCartillas } from "./pages/HistorialCartillas";
 import { Registro } from "./pages/Registro";
 import { PlanificacionRetiro } from "./pages/PlanificacionRetiro";
@@ -23,9 +22,6 @@ export function App() {
 
           <Route path="/retos" element={
             <PrivateUserRoute><Retos /></PrivateUserRoute>
-          } />
-          <Route path="/cartilla" element={
-            <PrivateUserRoute><Cartilla /></PrivateUserRoute>
           } />
           <Route path="/historial" element={
             <PrivateUserRoute><HistorialCartillas /></PrivateUserRoute>

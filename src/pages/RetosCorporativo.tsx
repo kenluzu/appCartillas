@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { TopBar } from "../components/TopBar";
 import { CartillaWidget } from "../components/CartillaWidget";
+import { WhatsAppButton, buildWhatsAppUrl } from "../components/WhatsAppButton";
 
 type TipoReto = "contact_center" | "referido" | "lineas_estrategicas" | "productos_focos";
 
@@ -10,6 +11,8 @@ type FormState = {
   monto: string;
   numero_factura: string;
   campo_extra: string;
+  cedula_referido: string;
+  celular_referido: string;
 };
 
 // Reemplaza con el número de WhatsApp del call center (formato: 593XXXXXXXXX)
@@ -110,7 +113,7 @@ export function RetosCorporativo() {
   const navigate = useNavigate();
   const [modalActivo, setModalActivo] = useState<TipoReto | null>(null);
   const [mostrarMecanica, setMostrarMecanica] = useState(false);
-  const [form, setForm] = useState<FormState>({ monto: "", numero_factura: "", campo_extra: "" });
+  const [form, setForm] = useState<FormState>({ monto: "", numero_factura: "", campo_extra: "", cedula_referido: "", celular_referido: "" });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const [exito, setExito] = useState<string | null>(null);
@@ -121,34 +124,85 @@ export function RetosCorporativo() {
   const [cargandoFacturas, setCargandoFacturas] = useState(false);
   const [retosReferido, setRetosReferido] = useState<{ id: number; numero_factura: string | null; monto: number; fecha_registro: string }[]>([]);
   const [cargandoReferidos, setCargandoReferidos] = useState(false);
+  type CartillaData = { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
+  const [cartillasCompletadas, setCartillasCompletadas] = useState<CartillaData[]>([]);
 
   useEffect(() => {
     if (!usuario?.cedula || !cartilla?.id) return;
+    const usuarioId = usuario.id;
+    const cartillaId = cartilla.id;
     setCargandoFacturas(true);
-    fetch(`/api/usuarios/sincronizar-retos?cod_cliente=${usuario.cod_cliente ?? 0}&cartilla_id=${cartilla.id}`)
-      .then(r => r.json())
-      .then((data: unknown) => {
-        if (data && typeof data === "object" && !Array.isArray(data)) {
-          const res = data as {
-            goleada: FacturaGoleada[];
-            estrategica: FacturaGoleada[];
-            foco: FacturaGoleada[];
-            cartilla: { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
-          };
-          setFacturasGoleada(res.goleada ?? []);
-          setFacturasEstrategica(res.estrategica ?? []);
-          setFacturasFoco(res.foco ?? []);
-          if (res.cartilla) setCartilla(res.cartilla);
+    (async () => {
+      try {
+        const [syncRes, retosRes, historialRes] = await Promise.all([
+          fetch(`/api/usuarios/sincronizar-retos?cod_cliente=${usuario.cod_cliente ?? 0}&cartilla_id=${cartillaId}`),
+          fetch(`/api/usuarios/retos/${cartillaId}`),
+          fetch(`/api/usuarios/historial?usuario_id=${usuarioId}`),
+        ]);
+        const data = await syncRes.json() as { goleada: FacturaGoleada[]; estrategica: FacturaGoleada[]; foco: FacturaGoleada[]; cartilla: CartillaData };
+        setFacturasGoleada(data.goleada ?? []);
+        setFacturasEstrategica(data.estrategica ?? []);
+        setFacturasFoco(data.foco ?? []);
+        if (retosRes.ok) {
+          const todosRetos = await retosRes.json() as { tipo_reto: string; id: number; numero_factura: string | null; monto: number; fecha_registro: string }[];
+          if (Array.isArray(todosRetos)) setRetosReferido(todosRetos.filter(x => x.tipo_reto === "referido"));
         }
-      })
-      .catch(() => {})
-      .finally(() => setCargandoFacturas(false));
+        if (historialRes.ok) {
+          const historial = await historialRes.json() as { id: number; puntos: number; estado: string; fecha_inicio: string }[];
+          if (Array.isArray(historial)) {
+            setCartillasCompletadas(
+              historial
+                .filter(c => (c.estado === "completa" || c.puntos >= 10) && c.id !== cartillaId)
+                .map(c => ({ id: c.id, puntos: c.puntos, estado: c.estado as CartillaData["estado"], fecha_inicio: c.fecha_inicio }))
+            );
+          }
+        }
+        if (data.cartilla) {
+          setCartilla(data.cartilla);
+          if (data.cartilla.estado === "completa" || data.cartilla.puntos >= 10) {
+            const nr = await fetch("/api/usuarios/nueva-cartilla", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ usuario_id: usuarioId }),
+            });
+            if (nr.ok) {
+              const nueva = await nr.json() as CartillaData;
+              setCartillasCompletadas(prev => [data.cartilla, ...prev.filter(c => c.id !== data.cartilla.id)]);
+              setCartilla(nueva);
+            }
+          }
+        }
+      } catch { /* silencioso */ }
+      finally { setCargandoFacturas(false); }
+    })();
   }, []);
 
   if (!usuario || !cartilla) return null;
 
   const puntos = cartilla.puntos ?? 0;
-  const completa = cartilla.estado === "completa" || puntos >= 10;
+
+  const ticketsPorTipo: Record<TipoReto, number> = {
+    contact_center:      facturasGoleada.reduce((s, f) => s + Math.floor(Number(f.monto_total) / 20), 0),
+    lineas_estrategicas: facturasEstrategica.reduce((s, f) => s + Math.floor(Number(f.monto_total) / 20), 0),
+    productos_focos:     facturasFoco.reduce((s, f) => s + Math.floor(Number(f.monto_total) / 20), 0),
+    referido:            retosReferido.reduce((s, r) => s + Math.floor(Number(r.monto) / 20), 0),
+  };
+
+  async function autoNuevaCartilla(completada: CartillaData) {
+    if (!usuario) return;
+    try {
+      const r = await fetch("/api/usuarios/nueva-cartilla", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario_id: usuario.id }),
+      });
+      if (r.ok) {
+        const nueva = await r.json() as CartillaData;
+        setCartillasCompletadas(prev => [completada, ...prev]);
+        setCartilla(nueva);
+      }
+    } catch { /* silencioso */ }
+  }
 
   function renderFacturasList(facturas: FacturaGoleada[], color: string) {
     if (cargandoFacturas) return <div className="py-8 text-center font-barlow text-sm text-gray-400">Cargando facturas…</div>;
@@ -183,7 +237,7 @@ export function RetosCorporativo() {
   function abrirModal(tipo: TipoReto) {
     setModalActivo(tipo);
     setMostrarMecanica(false);
-    setForm({ monto: "", numero_factura: "", campo_extra: "" });
+    setForm({ monto: "", numero_factura: "", campo_extra: "", cedula_referido: "", celular_referido: "" });
     setError("");
     setExito(null);
     if (tipo === "referido") cargarRetosReferido();
@@ -201,7 +255,7 @@ export function RetosCorporativo() {
     if (!cartilla) return;
 
     const descripcion = form.campo_extra.trim()
-      ? `Nombre del referido/a: ${form.campo_extra.trim()}`
+      ? form.campo_extra.trim()
       : undefined;
 
     if (retosReferido.some(r => r.numero_factura === form.numero_factura.trim())) {
@@ -219,6 +273,8 @@ export function RetosCorporativo() {
           cartilla_id: cartilla.id,
           numero_factura: form.numero_factura.trim(),
           descripcion,
+          cedula_referido: form.cedula_referido.trim() || undefined,
+          celular_referido: form.celular_referido.trim() || undefined,
         }),
       });
 
@@ -231,9 +287,10 @@ export function RetosCorporativo() {
       await cargarRetosReferido();
 
       if (nuevaCartilla.estado === "completa" || nuevaCartilla.puntos >= 10) {
-        setExito(`¡Felicitaciones! Completaste tu cartilla con ${nuevaCartilla.puntos}/10 puntos. Factura $${Number(monto).toFixed(2)} validada.`);
+        setExito(`¡Felicitaciones! Completaste tu cartilla con ${nuevaCartilla.puntos}/10 tickets. Factura $${Number(monto).toFixed(2)} validada.`);
+        autoNuevaCartilla(nuevaCartilla);
       } else {
-        setExito(`¡Punto registrado! Factura $${Number(monto).toFixed(2)} validada. Tu cartilla ahora tiene ${nuevaCartilla.puntos}/10 puntos.`);
+        setExito(`¡Ticket registrado! Factura $${Number(monto).toFixed(2)} validada. Tu cartilla ahora tiene ${nuevaCartilla.puntos}/10 tickets.`);
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -257,10 +314,31 @@ export function RetosCorporativo() {
 
       <div className="max-w-lg mx-auto space-y-4 mt-6">
 
-        {/* Cartilla de progreso */}
+        {/* Cartilla activa */}
         <div className="animate-fade-in-up stagger-1">
           <CartillaWidget cartilla={cartilla} />
         </div>
+
+        {/* Cartillas completadas (folded) */}
+        {cartillasCompletadas.map(c => (
+          <div key={c.id} className="animate-fade-in-up rounded-[20px] overflow-hidden" style={{ background: "rgba(247,201,72,0.18)", border: "1.5px solid rgba(212,150,10,0.40)" }}>
+            <div className="px-5 py-4 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-condensed font-bold text-base leading-tight" style={{ color: "#7a4e00" }}>Cartilla completada</span>
+                  <span className="text-[9px] font-condensed font-bold tracking-wider px-2 py-0.5 rounded-full uppercase" style={{ background: "#d4960a", color: "#fff" }}>✓ Lista</span>
+                </div>
+                <p className="font-barlow text-xs mt-0.5" style={{ color: "rgba(0,0,0,0.45)" }}>10/10 tickets · Inicio: {c.fecha_inicio}</p>
+              </div>
+            </div>
+            <div className="px-5 pb-4">
+              <WhatsAppButton
+                className="rounded-xl py-2.5"
+                href={buildWhatsAppUrl("593981034795", `Hola! Completé mi cartilla *Ponte la 10*\nCédula: ${usuario.cedula}\nNombre: ${usuario.nombre} ${usuario.apellido}\nMe gustaría coordinar la entrega de mi premio.`)}
+              />
+            </div>
+          </div>
+        ))}
 
         {/* Label — mecánicas */}
         <div className="animate-fade-in-up stagger-2 pt-1">
@@ -279,10 +357,9 @@ export function RetosCorporativo() {
                 <button
                   key={tipo}
                   onClick={() => abrirModal(tipo)}
-                  disabled={completa}
                   onMouseEnter={() => setHoveredReto(tipo)}
                   onMouseLeave={() => setHoveredReto(null)}
-                  className="flex flex-col gap-3 p-[18px] rounded-2xl text-left disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex flex-col gap-3 p-[18px] rounded-2xl text-left cursor-pointer"
                   style={{
                     background: hovered ? `${c.color}20` : "rgba(255,255,255,0.92)",
                     border: `1px solid ${hovered ? c.color + "40" : "rgba(0,0,0,0.07)"}`,
@@ -305,17 +382,18 @@ export function RetosCorporativo() {
                     <p className="font-barlow text-[12px] mt-1 leading-[1.55]" style={{ color: "rgba(0,0,0,0.85)" }}>
                       {c.descripcion}
                     </p>
+                    <span
+                      className="inline-block mt-2 text-[11px] font-condensed font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: `${c.color}18`, color: c.color }}
+                    >
+                      {cargandoFacturas ? "…" : `${ticketsPorTipo[tipo]} ticket${ticketsPorTipo[tipo] !== 1 ? "s" : ""}`}
+                    </span>
                   </div>
                 </button>
               );
             })}
           </div>
 
-          {completa && (
-            <p className="text-center font-barlow text-xs mt-3" style={{ color: "rgba(0,0,0,0.42)" }}>
-              Cartilla completa — coordina tu premio antes de iniciar una nueva.
-            </p>
-          )}
         </div>
 
         {/* Label — historial */}
@@ -429,54 +507,21 @@ export function RetosCorporativo() {
                 <div className="space-y-3">
                   <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026</p>
                   {renderFacturasList(facturasGoleada, cfg.color)}
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MENSAJE)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-condensed font-bold text-sm text-white cursor-pointer"
-                    style={{ background: "#25D366" }}
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                    Hacer una compra
-                  </a>
+                  <WhatsAppButton href={buildWhatsAppUrl(WHATSAPP_NUMERO, WHATSAPP_MENSAJE)} label="Hacer una compra" />
                   <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
                 </div>
               ) : modalActivo === "lineas_estrategicas" ? (
                 <div className="space-y-2">
                   <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026</p>
                   {renderFacturasList(facturasEstrategica, cfg.color)}
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MENSAJE)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-condensed font-bold text-sm text-white cursor-pointer"
-                    style={{ background: "#25D366" }}
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                    Hacer una compra
-                  </a>
+                  <WhatsAppButton href={buildWhatsAppUrl(WHATSAPP_NUMERO, WHATSAPP_MENSAJE)} label="Hacer una compra" />
                   <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
                 </div>
               ) : modalActivo === "productos_focos" ? (
                 <div className="space-y-2">
                   <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026</p>
                   {renderFacturasList(facturasFoco, cfg.color)}
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MENSAJE)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-condensed font-bold text-sm text-white cursor-pointer"
-                    style={{ background: "#25D366" }}
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                    Hacer una compra
-                  </a>
+                  <WhatsAppButton href={buildWhatsAppUrl(WHATSAPP_NUMERO, WHATSAPP_MENSAJE)} label="Hacer una compra" />
                   <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
                 </div>
               ) : modalActivo !== "referido" ? (
@@ -523,6 +568,16 @@ export function RetosCorporativo() {
                   <div>
                     <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelExtra}</label>
                     <input type="text" value={form.campo_extra} onChange={e => setForm(p => ({ ...p, campo_extra: e.target.value }))} className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">Cédula del referido</label>
+                      <input type="text" inputMode="numeric" required value={form.cedula_referido} onChange={e => setForm(p => ({ ...p, cedula_referido: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="0912345678" />
+                    </div>
+                    <div>
+                      <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">Celular del referido</label>
+                      <input type="text" inputMode="numeric" required value={form.celular_referido} onChange={e => setForm(p => ({ ...p, celular_referido: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="0991234567" />
+                    </div>
                   </div>
                   <div>
                     <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelFactura}</label>

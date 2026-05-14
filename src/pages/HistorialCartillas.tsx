@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { TopBar } from "../components/TopBar";
+import { WhatsAppButton, buildWhatsAppUrl } from "../components/WhatsAppButton";
 
 type CartillaHistorial = {
   id: number;
@@ -166,6 +167,12 @@ export function HistorialCartillas() {
 
               {expandida === c.id && (
                 <div className="border-t border-gray-100 px-5 py-3">
+                  {(c.estado === "completa" || c.puntos >= 10) && usuario && (
+                    <WhatsAppButton
+                      className="mb-3 rounded-xl py-2.5"
+                      href={buildWhatsAppUrl("593981034795", `Hola! Completé mi cartilla *Ponte la 10*\nCédula: ${usuario.cedula}\nNombre: ${usuario.nombre} ${usuario.apellido}\nCartilla #${c.numero} · Inicio: ${c.fecha_inicio}\nMe gustaría coordinar la entrega de mi premio.`)}
+                    />
+                  )}
                   {cargandoRetos === c.id && (
                     <p className="text-xs text-gray-300 py-2">Cargando retos...</p>
                   )}

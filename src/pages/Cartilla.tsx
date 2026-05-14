@@ -20,7 +20,7 @@ export function Cartilla() {
   const completa = !cerrada && (cartilla.estado === "completa" || puntos >= TOTAL_PUNTOS);
 
   const whatsappMsg = encodeURIComponent(
-    `Hola! Completé mi cartilla *Ponte la 10* 🎉\nCédula: ${usuario.cedula}\nNombre: ${usuario.nombre} ${usuario.apellido}\nPuntos: ${puntos}/${TOTAL_PUNTOS}\nMe gustaría coordinar la entrega de mi premio.`
+    `Hola! Completé mi cartilla *Ponte la 10*\nCédula: ${usuario.cedula}\nNombre: ${usuario.nombre} ${usuario.apellido}\nPuntos: ${puntos}/${TOTAL_PUNTOS}\nMe gustaría coordinar la entrega de mi premio.`
   );
   const whatsappUrl = `https://wa.me/${WHATSAPP_ADMIN}?text=${whatsappMsg}`;
 

@@ -20,6 +20,15 @@ export class Reto {
   @Column({ type: "varchar", length: 500, nullable: true })
   descripcion!: string | null;
 
+  @Column({ type: "int", default: 1 })
+  tickets!: number;
+
+  @Column({ type: "varchar", length: 13, nullable: true })
+  cedula_referido!: string | null;
+
+  @Column({ type: "varchar", length: 15, nullable: true })
+  celular_referido!: string | null;
+
   @Column({ type: "datetime", default: () => "GETDATE()" })
   fecha_registro!: Date;
 

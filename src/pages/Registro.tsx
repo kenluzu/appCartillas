@@ -48,7 +48,7 @@ export function Registro() {
         setUsuario(data);
         setCartilla(data.cartilla);
         setRetiro(null);
-        navigate("/cartilla");
+        navigate("/retos");
       } else if (res.status === 409) {
         setErrorGlobal("Esta cédula ya está registrada");
       } else {

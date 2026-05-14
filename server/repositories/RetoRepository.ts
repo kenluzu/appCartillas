@@ -11,7 +11,9 @@ export const RetoRepository = {
     monto: number;
     numero_factura?: string;
     descripcion?: string;
-    puntos_a_agregar?: number;
+    tickets?: number;
+    cedula_referido?: string;
+    celular_referido?: string;
   }): Promise<{ reto: Reto; cartilla: Cartilla }> {
     const retoRepo = AppDataSource.getRepository(Reto);
     const cartillaRepo = AppDataSource.getRepository(Cartilla);
@@ -20,17 +22,22 @@ export const RetoRepository = {
     if (!cartilla) throw new Error("Cartilla no encontrada");
     if (cartilla.estado !== "activa") throw new Error("La cartilla no está activa");
 
+    const tickets = data.tickets ?? 1;
+
     const reto = retoRepo.create({
       cartilla_id: data.cartilla_id,
       tipo_reto: data.tipo_reto,
       monto: data.monto,
       numero_factura: data.numero_factura ?? null,
       descripcion: data.descripcion ?? null,
+      tickets,
+      cedula_referido: data.cedula_referido ?? null,
+      celular_referido: data.celular_referido ?? null,
       estado: "registrado",
     });
     await retoRepo.save(reto);
 
-    cartilla.puntos = (cartilla.puntos ?? 0) + (data.puntos_a_agregar ?? 1);
+    cartilla.puntos = Math.min((cartilla.puntos ?? 0) + tickets, PUNTOS_COMPLETO);
     if (cartilla.puntos >= PUNTOS_COMPLETO && cartilla.estado === "activa") {
       cartilla.estado = "completa";
     }

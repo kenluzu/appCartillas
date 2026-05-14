@@ -38,8 +38,8 @@ export const DatamartRepository = {
     );
   },
 
-  async queryEstrategica(idCliente: number, cods: string[]): Promise<FacturaRow[]> {
-    if (cods.length === 0) return [];
+  async queryEstrategica(idCliente: number, cods: string[], idBodegas: number[]): Promise<FacturaRow[]> {
+    if (cods.length === 0 || idBodegas.length === 0) return [];
     return DatamartDataSource.query(
       `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
        FROM [dbo].[FACT_VENTA_CABECERA] c
@@ -47,6 +47,7 @@ export const DatamartRepository = {
          ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
        WHERE c.id_cliente = @0
          AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
+         AND c.id_bodega IN (${idBodegas.join(",")})
          AND EXISTS (
            SELECT 1 FROM [dbo].[FACT_VENTA_DETALLE] d
            WHERE d.id_venta_cab = c.id_venta_cab
@@ -60,8 +61,8 @@ export const DatamartRepository = {
     );
   },
 
-  async queryFoco(idCliente: number, cods: string[]): Promise<FacturaRow[]> {
-    if (cods.length === 0) return [];
+  async queryFoco(idCliente: number, cods: string[], idBodegas: number[]): Promise<FacturaRow[]> {
+    if (cods.length === 0 || idBodegas.length === 0) return [];
     return DatamartDataSource.query(
       `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
        FROM [dbo].[FACT_VENTA_CABECERA] c
@@ -69,6 +70,7 @@ export const DatamartRepository = {
          ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
        WHERE c.id_cliente = @0
          AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
+         AND c.id_bodega IN (${idBodegas.join(",")})
          AND EXISTS (
            SELECT 1 FROM [dbo].[FACT_VENTA_DETALLE] d
            WHERE d.id_venta_cab = c.id_venta_cab
@@ -113,10 +115,20 @@ export const DatamartRepository = {
     const codsEstrategica = productosRows.filter(p => p.tipo === "estrategica").map(p => `'${p.cod_producto}'`);
     const codsFoco        = productosRows.filter(p => p.tipo === "foco").map(p => `'${p.cod_producto}'`);
 
-    const [goleadaRows, estrategicaRows, focoRows] = await Promise.all([
+    const [goleadaRows, estrategicaRows, focoRows, facturasUsadasRows] = await Promise.all([
       this.queryGoleada(codCliente, idBodegas),
-      this.queryEstrategica(codCliente, codsEstrategica),
-      this.queryFoco(codCliente, codsFoco),
+      this.queryEstrategica(codCliente, codsEstrategica, idBodegas),
+      this.queryFoco(codCliente, codsFoco, idBodegas),
+      // Facturas ya registradas en cartillas anteriores del mismo usuario
+      AppDataSource.query(
+        `SELECT DISTINCT r.numero_factura
+         FROM retos r
+         INNER JOIN cartillas c ON c.id = r.cartilla_id
+         WHERE c.usuario_id = (SELECT usuario_id FROM cartillas WHERE id = @0)
+           AND r.cartilla_id != @0
+           AND r.numero_factura IS NOT NULL`,
+        [cartillaId]
+      ) as Promise<{ numero_factura: string }[]>,
     ]);
 
     // Borrar retos automáticos previos para recalcular con deduplicación por prioridad
@@ -126,31 +138,33 @@ export const DatamartRepository = {
     );
 
     // Deduplicar: una misma factura solo pertenece al reto de mayor prioridad
-    const seen = new Set<string>();
+    // Prioridad: foco > lineas_estrategicas > goleada
+    // y no puede reutilizarse de cartillas anteriores del mismo usuario
+    const seen = new Set<string>(facturasUsadasRows.map(f => f.numero_factura));
     const toInsert: Partial<Reto>[] = [];
     const displayGoleada: FacturaRow[] = [];
     const displayEstrategica: FacturaRow[] = [];
     const displayFoco: FacturaRow[] = [];
 
-    for (const row of goleadaRows) {
+    for (const row of focoRows) {
       if (!seen.has(row.numero_factura)) {
         seen.add(row.numero_factura);
-        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "contact_center", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado" });
-        displayGoleada.push(row);
+        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "productos_focos", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado", tickets: Math.floor(row.monto_total / 20) });
+        displayFoco.push(row);
       }
     }
     for (const row of estrategicaRows) {
       if (!seen.has(row.numero_factura)) {
         seen.add(row.numero_factura);
-        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "lineas_estrategicas", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado" });
+        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "lineas_estrategicas", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado", tickets: Math.floor(row.monto_total / 20) });
         displayEstrategica.push(row);
       }
     }
-    for (const row of focoRows) {
+    for (const row of goleadaRows) {
       if (!seen.has(row.numero_factura)) {
         seen.add(row.numero_factura);
-        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "productos_focos", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado" });
-        displayFoco.push(row);
+        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "contact_center", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado", tickets: Math.floor(row.monto_total / 20) });
+        displayGoleada.push(row);
       }
     }
 
@@ -158,12 +172,12 @@ export const DatamartRepository = {
       await AppDataSource.getRepository(Reto).insert(toInsert);
     }
 
-    // Contar todos los retos (incluyendo referidos) como fuente de verdad para puntos
+    // Sumar tickets de todos los retos de esta cartilla (incluyendo referidos)
     const countResult = await AppDataSource.query(
-      `SELECT COUNT(*) AS total FROM retos WHERE cartilla_id = @0`,
+      `SELECT SUM(ISNULL(tickets, 1)) AS total FROM retos WHERE cartilla_id = @0`,
       [cartillaId]
     ) as [{ total: number }];
-    const totalPuntos = Number(countResult[0]!.total);
+    const totalPuntos = Math.min(Number(countResult[0]!.total), 10);
 
     const cartilla = await CartillaRepository.actualizarPuntos(cartillaId, totalPuntos);
 

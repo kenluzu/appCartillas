@@ -140,7 +140,7 @@ export function PlanificacionRetiro() {
     <div className="min-h-screen px-4 py-8">
       <div className="max-w-xl mx-auto space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/cartilla")} className="text-white hover:text-gray-300 text-sm cursor-pointer">
+          <button onClick={() => navigate("/retos")} className="text-white hover:text-gray-300 text-sm cursor-pointer">
             ← Volver
           </button>
           <h2 className="text-xl font-bold text-white">
