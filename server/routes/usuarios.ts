@@ -5,6 +5,7 @@ import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
 import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
 import { RetoRepository } from "../repositories/RetoRepository";
 import { DatamartRepository } from "../repositories/DatamartRepository";
+import { ComercialCumplimiento } from "../entities/ComercialCumplimiento";
 import { AppDataSource, DatamartDataSource } from "../data-source";
 
 export const routerUsuarios = Router();
@@ -56,20 +57,26 @@ routerUsuarios.get("/validar", async (req: Request, res: Response) => {
       let telefono = "";
       let cod_cliente: number | null = null;
 
-      if (DatamartDataSource.isInitialized) {
-        const rows = await DatamartDataSource.query(
-          `SELECT TOP 1 id_cliente, nombre, num_celular
-           FROM [dbo].[DIM_CLIENTE]
-           WHERE documento_identidad = @0`,
-          [cedula]
-        ) as { id_cliente: number; nombre: string; num_celular: string }[];
-
-        if (rows.length > 0) {
-          nombre      = rows[0]!.nombre ?? "";
-          telefono    = rows[0]!.num_celular ?? "";
-          cod_cliente = rows[0]!.id_cliente ?? null;
-        }
+      if (!DatamartDataSource.isInitialized) {
+        res.status(404).json({ error: "Cédula no encontrada." });
+        return;
       }
+
+      const rows = await DatamartDataSource.query(
+        `SELECT TOP 1 id_cliente, nombre, num_celular
+         FROM [dbo].[DIM_CLIENTE]
+         WHERE documento_identidad = @0`,
+        [cedula]
+      ) as { id_cliente: number; nombre: string; num_celular: string }[];
+
+      if (rows.length === 0) {
+        res.status(404).json({ error: "Cédula no encontrada." });
+        return;
+      }
+
+      nombre      = rows[0]!.nombre ?? "";
+      telefono    = rows[0]!.num_celular ?? "";
+      cod_cliente = rows[0]!.id_cliente ?? null;
 
       usuario = await UsuarioRepository.crearUsuario({ cedula, nombre, apellido: "", telefono, cod_cliente });
     }
@@ -461,5 +468,95 @@ routerUsuarios.put("/plan/:id", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[actualizarPlan] Error de BD:", err);
     res.status(500).json({ error: "Error al actualizar el retiro" });
+  }
+});
+
+// ── Validar usuario comercial (por nombre de usuario del Excel) ───────────────
+routerUsuarios.get("/validar-comercial", async (req: Request, res: Response) => {
+  const usuarioVal = (req.query.usuario as string | undefined)?.trim();
+  if (!usuarioVal) {
+    res.status(400).json({ error: "usuario requerido" });
+    return;
+  }
+
+  try {
+    const repo = AppDataSource.getRepository(ComercialCumplimiento);
+    const registro = await repo
+      .createQueryBuilder("c")
+      .where("LOWER(c.usuario) = LOWER(:val)", { val: usuarioVal })
+      .getOne();
+
+    if (!registro) {
+      res.status(404).json({ error: "Usuario no encontrado en el equipo comercial." });
+      return;
+    }
+
+    const dimUsuario = await DatamartRepository.buscarUsuarioPorLogin(usuarioVal);
+    if (!dimUsuario) {
+      res.status(404).json({ error: "Usuario no encontrado en el sistema." });
+      return;
+    }
+    const nombreCompleto = dimUsuario.nombre;
+
+    // Cálculo de puntos con gate: los 3 deben ser >= 100%
+    const vol  = Number(registro.volumen)     * 100;
+    const util = Number(registro.utilidad)    * 100;
+    const est  = Number(registro.estrategica) * 100;
+    const cumpleTodo = vol >= 100 && util >= 100 && est >= 100;
+
+    const boletoAsegurado  = cumpleTodo ? 1 : 0;
+    const puntosVolumen    = cumpleTodo ? Math.floor((vol  - 100) / 5) : 0;
+    const puntosUtilidad   = cumpleTodo ? Math.floor((util - 100) / 5) : 0;
+    const puntosEstrategica = cumpleTodo ? Math.floor((est  - 100) / 5) : 0;
+    const totalPuntos = Math.min(boletoAsegurado + puntosVolumen + puntosUtilidad + puntosEstrategica, 10);
+
+    // Buscar o crear usuario en la tabla usuarios (cedula = valor del usuario comercial)
+    let usuario = await UsuarioRepository.buscarPorCedula(usuarioVal);
+    if (!usuario) {
+      usuario = await UsuarioRepository.crearUsuario({
+        cedula: usuarioVal,
+        nombre: nombreCompleto,
+        apellido: "",
+        telefono: "",
+      });
+    } else if (usuario.nombre !== nombreCompleto) {
+      await UsuarioRepository.actualizarNombre(usuario.id, nombreCompleto);
+      usuario.nombre = nombreCompleto;
+    }
+
+    // Buscar o crear cartilla, actualizar puntos
+    const cartillaExistente = await CartillaRepository.buscarActivaPorUsuario(usuario.id);
+    let cartilla = cartillaExistente ?? await CartillaRepository.crearCartilla(usuario.id);
+    cartilla = await CartillaRepository.actualizarPuntos(cartilla.id, totalPuntos);
+
+    res.json({
+      usuario: {
+        id: usuario.id,
+        cedula: usuario.cedula,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido ?? "",
+        telefono: usuario.telefono ?? "",
+        rol: usuario.rol,
+        cod_cliente: null,
+      },
+      cartilla: {
+        id: cartilla.id,
+        puntos: cartilla.puntos,
+        estado: cartilla.estado,
+        fecha_inicio: cartilla.fecha_inicio,
+      },
+      metricas: {
+        volumen:             Math.round(vol),
+        utilidad:            Math.round(util),
+        estrategica:         Math.round(est),
+        boleto_asegurado:    boletoAsegurado,
+        puntos_volumen:      puntosVolumen,
+        puntos_utilidad:     puntosUtilidad,
+        puntos_estrategica:  puntosEstrategica,
+      },
+    });
+  } catch (err) {
+    console.error("[validar-comercial] Error:", err);
+    res.status(500).json({ error: "Error de conexión" });
   }
 });

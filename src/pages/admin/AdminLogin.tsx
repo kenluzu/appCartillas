@@ -96,6 +96,14 @@ export function AdminLogin() {
             )}
 
             <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors py-1 cursor-pointer"
+            >
+              ← Volver
+            </button>
+
+            <button
               type="submit"
               disabled={cargando}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-[0_1px_2px_rgba(37,99,235,0.15)] hover:shadow-[0_2px_8px_rgba(37,99,235,0.2)] active:scale-[0.98] cursor-pointer"

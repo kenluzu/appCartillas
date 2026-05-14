@@ -5,42 +5,65 @@ import fondoWeb from "../assets/fondo-web.png";
 import fondoResponsive from "../assets/fondo-responsive.jpg";
 
 export function SelectorCanal() {
-  const { setCanal, setUsuario, setCartilla, setRetiro } = useApp();
+  const { setCanal, setUsuario, setCartilla, setRetiro, setComercialMetricas } = useApp();
   const navigate = useNavigate();
   const [cedula, setCedula] = useState("");
   const [cargando, setCargando] = useState<"CORPORATIVO" | "COMERCIAL" | null>(null);
   const [error, setError] = useState("");
 
   async function seleccionar(canal: "CORPORATIVO" | "COMERCIAL") {
-    const ced = cedula.trim();
-    if (!ced) {
-      setError("Ingresa tu cédula antes de continuar.");
+    const val = cedula.trim();
+    if (!val) {
+      setError("Ingresa tu identificador antes de continuar.");
       return;
     }
 
     setCargando(canal);
     setError("");
     try {
-      const res = await fetch(`/api/usuarios/validar?cedula=${encodeURIComponent(ced)}`);
-      const data = await res.json() as Record<string, unknown>;
+      if (canal === "COMERCIAL") {
+        const res = await fetch(`/api/usuarios/validar-comercial?usuario=${encodeURIComponent(val)}`);
+        const data = await res.json() as Record<string, unknown>;
 
-      if (res.status === 404) {
-        setError("Cédula no encontrada. Comunícate con el administrador.");
-        return;
-      }
-      if (!res.ok) {
-        throw new Error((data.error as string | undefined) ?? "Error al consultar");
-      }
+        if (res.status === 404) {
+          setError("Usuario no encontrado. Comunícate con el administrador.");
+          return;
+        }
+        if (!res.ok) {
+          throw new Error((data.error as string | undefined) ?? "Error al consultar");
+        }
 
-      const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string, cod_cliente: number | null };
-      const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
-      setUsuario(usuario);
-      setCartilla(cartilla);
-      setRetiro(null);
-      setCanal(canal);
-      navigate("/retos");
+        const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string; cod_cliente: number | null };
+        const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
+        const metricas = data.metricas as import("../context/AppContext").ComercialMetricas;
+        setUsuario(usuario);
+        setCartilla(cartilla);
+        setRetiro(null);
+        setCanal(canal);
+        setComercialMetricas(metricas);
+        navigate("/retos");
+      } else {
+        const res = await fetch(`/api/usuarios/validar?cedula=${encodeURIComponent(val)}`);
+        const data = await res.json() as Record<string, unknown>;
+
+        if (res.status === 404) {
+          setError("Cédula no encontrada. Comunícate con el administrador.");
+          return;
+        }
+        if (!res.ok) {
+          throw new Error((data.error as string | undefined) ?? "Error al consultar");
+        }
+
+        const usuario = data.usuario as { id: number; cedula: string; nombre: string; apellido: string; telefono: string; rol: string; cod_cliente: number | null };
+        const cartilla = data.cartilla as { id: number; puntos: number; estado: "activa" | "completa" | "cerrada"; fecha_inicio: string };
+        setUsuario(usuario);
+        setCartilla(cartilla);
+        setRetiro(null);
+        setCanal(canal);
+        navigate("/retos");
+      }
     } catch (e: unknown) {
-      if (e instanceof Error && e.message.includes("Cédula no encontrada")) {
+      if (e instanceof Error && (e.message.includes("no encontrad"))) {
         setError(e.message);
       } else {
         setError("Error de conexión. Intenta de nuevo.");
@@ -73,17 +96,16 @@ export function SelectorCanal() {
         <div className="flex flex-col gap-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Número de cédula
+              Cédula / Usuario
             </label>
             <input
               type="text"
               value={cedula}
               onChange={e => {
-                setCedula(e.target.value.replace(/\D/g, "").slice(0, 13));
+                setCedula(e.target.value.toUpperCase());
                 setError("");
               }}
-              placeholder="Ingresa tu cédula"
-              inputMode="numeric"
+              placeholder="Cédula o usuario comercial"
               autoFocus
               className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all"
             />

@@ -21,6 +21,14 @@ export type SincronizarRetosResult = {
 
 export const DatamartRepository = {
 
+  async buscarUsuarioPorLogin(login: string): Promise<{ nombre: string } | null> {
+    const rows: { nombre: string }[] = await DatamartDataSource.query(
+      `SELECT TOP 1 nombre FROM [dbo].[DIM_USUARIO] WHERE login = @0`,
+      [login]
+    );
+    return rows[0] ?? null;
+  },
+
   async queryGoleada(idCliente: number, idBodegas: number[]): Promise<FacturaRow[]> {
     if (idBodegas.length === 0) return [];
     return DatamartDataSource.query(

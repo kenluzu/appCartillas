@@ -33,6 +33,10 @@ export const UsuarioRepository = {
     return repo.save(usuario);
   },
 
+  async actualizarNombre(id: number, nombre: string): Promise<void> {
+    await AppDataSource.getRepository(Usuario).update(id, { nombre });
+  },
+
   async exportarTodos(): Promise<Usuario[]> {
     return AppDataSource.getRepository(Usuario)
       .createQueryBuilder("u")
