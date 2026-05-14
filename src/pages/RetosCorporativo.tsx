@@ -12,15 +12,20 @@ type FormState = {
   campo_extra: string;
 };
 
+// Reemplaza con el número de WhatsApp del call center (formato: 593XXXXXXXXX)
+const WHATSAPP_NUMERO = "593XXXXXXXXX";
+const WHATSAPP_MENSAJE = "Hola, quiero realizar una compra para el programa *Ponte la 10* de Farmacias Cruz Azul.";
+
 type RetoConfig = {
   titulo: string;
   descripcion: string;
-  subtitulo: string;
   icon: React.ReactNode;
   montoMin: number;
   labelExtra: string;
   labelFactura: string;
   color: string;
+  mecanica: string;
+  tieneWhatsapp: boolean;
 };
 
 const PhoneIcon = () => (
@@ -51,42 +56,46 @@ const RETO_CONFIG: Record<TipoReto, RetoConfig> = {
   contact_center: {
     titulo: "Goleada General",
     descripcion: "Compras vía Contact Center desde $20",
-    subtitulo: "Desde $20",
     icon: <PhoneIcon />,
     montoMin: 20,
     labelExtra: "",
     labelFactura: "N° de referencia CC",
     color: "#d45bf8",
+    mecanica: "Por cada $20,00 en compra en cualquier producto de Farmacias Cruz Azul, a través de call center obtienes un ticket para tu cartilla.",
+    tieneWhatsapp: true,
   },
   referido: {
     titulo: "Refiere a tu 10",
     descripcion: "Trae a un referido y suma desde $20",
-    subtitulo: "Desde $20",
     icon: <UsersIcon />,
     montoMin: 20,
     labelExtra: "Nombre del referido/a",
     labelFactura: "N° de factura",
     color: "#ff3030",
+    mecanica: "Registra el número de una factura mayor o igual a $20,00 que se haya realizado en cualquier Farmacia Cruz Azul de Farmcorp a nivel nacional y obtén un ticket para tu cartilla.",
+    tieneWhatsapp: false,
   },
   lineas_estrategicas: {
     titulo: "Jugada Estratégica",
     descripcion: "Compras en líneas estratégicas desde $20",
-    subtitulo: "Desde $20",
     icon: <TargetIcon />,
     montoMin: 20,
     labelExtra: "Producto / Línea",
     labelFactura: "N° de factura",
     color: "#292cd8",
+    mecanica: "Por cada $20,00 en compra que incluyan cualquier producto de las líneas estratégicas de Farmacias Cruz Azul, a través de call center obtienes un ticket para tu cartilla.",
+    tieneWhatsapp: true,
   },
   productos_focos: {
     titulo: "Enfoca el Arco",
     descripcion: "Compras en productos focos desde $20",
-    subtitulo: "Desde $20",
     icon: <StarIcon />,
     montoMin: 20,
     labelExtra: "Nombre del producto",
     labelFactura: "N° de factura",
     color: "#22deff",
+    mecanica: "Por cada $20,00 en compra que incluyan cualquier producto foco de Farmacias Cruz Azul, a través de call center obtienes un ticket para tu cartilla.",
+    tieneWhatsapp: true,
   },
 };
 
@@ -100,6 +109,7 @@ export function RetosCorporativo() {
   const { usuario, cartilla, canal, setCartilla, clearUserSession } = useApp();
   const navigate = useNavigate();
   const [modalActivo, setModalActivo] = useState<TipoReto | null>(null);
+  const [mostrarMecanica, setMostrarMecanica] = useState(false);
   const [form, setForm] = useState<FormState>({ monto: "", numero_factura: "", campo_extra: "" });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
@@ -172,6 +182,7 @@ export function RetosCorporativo() {
 
   function abrirModal(tipo: TipoReto) {
     setModalActivo(tipo);
+    setMostrarMecanica(false);
     setForm({ monto: "", numero_factura: "", campo_extra: "" });
     setError("");
     setExito(null);
@@ -180,6 +191,7 @@ export function RetosCorporativo() {
 
   function cerrarModal() {
     setModalActivo(null);
+    setMostrarMecanica(false);
     setError("");
     setExito(null);
   }
@@ -371,43 +383,100 @@ export function RetosCorporativo() {
           onClick={e => { if (e.target === e.currentTarget) cerrarModal(); }}
         >
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: `${cfg.color}20`, color: cfg.color }}
-                >
-                  {cfg.icon}
+            <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: `${cfg.color}20`, color: cfg.color }}
+                  >
+                    {cfg.icon}
+                  </div>
+                  <div>
+                    <p className="font-condensed font-bold text-base" style={{ color: cfg.color }}>{cfg.titulo}</p>
+                    <p className="font-barlow text-xs text-gray-400">{cfg.descripcion}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-condensed font-bold text-base" style={{ color: cfg.color }}>{cfg.titulo}</p>
-                  <p className="font-barlow text-xs text-gray-400">{cfg.subtitulo}</p>
-                </div>
+                <button onClick={cerrarModal} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 cursor-pointer">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button onClick={cerrarModal} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 cursor-pointer">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              {/* Botón ver mecánica */}
+              <button
+                onClick={() => setMostrarMecanica(v => !v)}
+                className="mt-3 flex items-center gap-1.5 text-xs font-barlow cursor-pointer transition-colors"
+                style={{ color: mostrarMecanica ? cfg.color : "rgba(0,0,0,0.38)" }}
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+                Ver detalle de mecánica
+                <svg className={`w-3 h-3 transition-transform ${mostrarMecanica ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
+              {mostrarMecanica && (
+                <p className="mt-2 font-barlow text-xs leading-relaxed rounded-xl px-3 py-2.5" style={{ background: `${cfg.color}10`, color: "rgba(0,0,0,0.72)", border: `1px solid ${cfg.color}25` }}>
+                  {cfg.mecanica}
+                </p>
+              )}
             </div>
 
-            <div className="px-5 py-5">
+            <div className="px-5 py-2">
               {modalActivo === "contact_center" ? (
                 <div className="space-y-3">
-                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026 · Compras ≥ $20</p>
+                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026</p>
                   {renderFacturasList(facturasGoleada, cfg.color)}
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MENSAJE)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-condensed font-bold text-sm text-white cursor-pointer"
+                    style={{ background: "#25D366" }}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Hacer una compra
+                  </a>
                   <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
                 </div>
               ) : modalActivo === "lineas_estrategicas" ? (
-                <div className="space-y-3">
-                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026 · Con productos estratégicos ≥ $20</p>
+                <div className="space-y-2">
+                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026</p>
                   {renderFacturasList(facturasEstrategica, cfg.color)}
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MENSAJE)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-condensed font-bold text-sm text-white cursor-pointer"
+                    style={{ background: "#25D366" }}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Hacer una compra
+                  </a>
                   <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
                 </div>
               ) : modalActivo === "productos_focos" ? (
-                <div className="space-y-3">
-                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026 · Con productos foco ≥ $20</p>
+                <div className="space-y-2">
+                  <p className="font-barlow text-xs text-gray-400 text-center">Facturas del 15 dic 2025 al 15 ene 2026</p>
                   {renderFacturasList(facturasFoco, cfg.color)}
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MENSAJE)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-condensed font-bold text-sm text-white cursor-pointer"
+                    style={{ background: "#25D366" }}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Hacer una compra
+                  </a>
                   <button onClick={cerrarModal} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cerrar</button>
                 </div>
               ) : modalActivo !== "referido" ? (
@@ -459,7 +528,6 @@ export function RetosCorporativo() {
                     <label className="block font-condensed font-bold text-xs text-gray-400 uppercase tracking-wider mb-1.5">{cfg.labelFactura}</label>
                     <input type="text" value={form.numero_factura} onChange={e => setForm(p => ({ ...p, numero_factura: e.target.value }))} required className="w-full font-barlow bg-gray-50 rounded-xl px-4 py-2.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" />
                   </div>
-                  <p className="font-barlow text-xs text-gray-400">La factura debe estar dentro del período y ser mayores a $20. El monto se obtiene automáticamente.</p>
                   {error && <p className="font-barlow text-red-600 text-xs bg-red-50 rounded-xl p-3 border border-red-100">{error}</p>}
                   <div className="flex gap-2 pt-1">
                     <button type="button" onClick={cerrarModal} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-condensed font-bold py-3 rounded-2xl cursor-pointer text-sm">Cancelar</button>

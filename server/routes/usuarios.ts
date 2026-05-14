@@ -4,14 +4,12 @@ import { CartillaRepository } from "../repositories/CartillaRepository";
 import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
 import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
 import { RetoRepository } from "../repositories/RetoRepository";
+import { DatamartRepository } from "../repositories/DatamartRepository";
 import { AppDataSource, DatamartDataSource } from "../data-source";
-import { Reto } from "../entities/Reto";
-
-// ── Rango de fechas para los retos (cambiar para demos) ───────────────────────
-const RETO_PERIODO_INICIO = 20251215;
-const RETO_PERIODO_FIN    = 20260115;
 
 export const routerUsuarios = Router();
+
+const MONTOS_MIN = 20;
 
 function horaStr(value: unknown): string {
   if (value instanceof Date) {
@@ -23,14 +21,15 @@ function horaStr(value: unknown): string {
   return String(value ?? "");
 }
 
-const MONTOS_MIN: Record<string, number> = {
-  contact_center: 20,
-  referido: 10,
-  lineas_estrategicas: 10,
-  productos_focos: 10,
-};
+function handleRetoError(err: unknown, res: Response) {
+  const msg = err instanceof Error ? err.message : "";
+  if (msg === "Cartilla no encontrada") return void res.status(404).json({ error: msg });
+  if (msg === "La cartilla no está activa") return void res.status(400).json({ error: msg });
+  res.status(500).json({ error: "Error al guardar el reto" });
+}
 
 routerUsuarios.get("/farmacias", async (_req: Request, res: Response) => {
+  // Obtener listado de farmacias para selección en el plan de retiro
   try {
     const farmacias = await FarmaciaRepository.buscarTodas();
     res.json(farmacias);
@@ -41,6 +40,7 @@ routerUsuarios.get("/farmacias", async (_req: Request, res: Response) => {
 });
 
 routerUsuarios.get("/validar", async (req: Request, res: Response) => {
+  // Validamos que cedula exista en el Datamart y si no existe, la creamos en nuestra BD de dbCartillas
   const cedula = req.query.cedula as string | undefined;
 
   if (!cedula) {
@@ -52,7 +52,6 @@ routerUsuarios.get("/validar", async (req: Request, res: Response) => {
     let usuario = await UsuarioRepository.buscarPorCedula(cedula);
 
     if (!usuario) {
-      // Buscar en DIM_CLIENTE del Datamart para auto-crear el usuario
       let nombre = "";
       let telefono = "";
       let cod_cliente: number | null = null;
@@ -72,13 +71,7 @@ routerUsuarios.get("/validar", async (req: Request, res: Response) => {
         }
       }
 
-      usuario = await UsuarioRepository.crearUsuario({
-        cedula,
-        nombre,
-        apellido: "",
-        telefono,
-        cod_cliente,
-      });
+      usuario = await UsuarioRepository.crearUsuario({ cedula, nombre, apellido: "", telefono, cod_cliente });
     }
 
     const cartillaExistente = await CartillaRepository.buscarActivaPorUsuario(usuario.id);
@@ -127,6 +120,7 @@ routerUsuarios.get("/validar", async (req: Request, res: Response) => {
 });
 
 routerUsuarios.post("/", async (req: Request, res: Response) => {
+  // Registrar nuevo usuario (solo para admins)
   const { cedula, nombre, apellido, telefono } = req.body ?? {};
 
   if (!cedula?.trim() || !nombre?.trim() || !apellido?.trim() || !telefono?.trim()) {
@@ -170,85 +164,18 @@ routerUsuarios.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// ── Helpers de consulta Datamart ──────────────────────────────────────────────
-// Los helpers reciben id_cliente (ya resuelto) para usar el índice de FACT_VENTA_CABECERA
-async function queryGoleada(idCliente: number, idBodegas: number[]) {
-  // Facturas con productos comprados en bodegas específicas (contact_center) desde $20 dentro del rango de fechas. 
-  console.log("Query Goleada - idCliente:", idCliente, "idBodegas:", idBodegas);
-  if (idBodegas.length === 0) return [];
-  return DatamartDataSource.query(
-    `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
-     FROM [dbo].[FACT_VENTA_CABECERA] c
-     INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
-       ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
-     WHERE c.id_cliente = @0
-       AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
-       AND c.id_bodega IN (${idBodegas.join(",")})
-     GROUP BY c.id_venta_cab, c.numero_factura, c.periodo
-     HAVING SUM(fp.monto_total) >= 20
-     ORDER BY c.periodo DESC`,
-    [idCliente]
-  );
-}
-
-async function queryEstrategica(idCliente: number, cods: string[]) {
-  // Facturas con productos comprados de líneas estratégicas desde $20 dentro del rango de fechas.
-  if (cods.length === 0) return [];
-  return DatamartDataSource.query(
-    `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
-     FROM [dbo].[FACT_VENTA_CABECERA] c
-     INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
-       ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
-     WHERE c.id_cliente = @0
-       AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
-       AND EXISTS (
-         SELECT 1 FROM [dbo].[FACT_VENTA_DETALLE] d
-         WHERE d.id_venta_cab = c.id_venta_cab
-           AND d.periodo = c.periodo
-           AND d.id_producto IN (${cods.join(",")})
-       )
-     GROUP BY c.id_venta_cab, c.numero_factura, c.periodo
-     HAVING SUM(fp.monto_total) >= 20
-     ORDER BY c.periodo DESC`,
-    [idCliente]
-  );
-}
-
-async function queryFoco(idCliente: number, cods: string[]) {
-  // Facturas con productos comprados de líneas de foco desde $20 dentro del rango de fechas.
-  if (cods.length === 0) return [];
-  return DatamartDataSource.query(
-    `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
-     FROM [dbo].[FACT_VENTA_CABECERA] c
-     INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
-       ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
-     WHERE c.id_cliente = @0
-       AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
-       AND EXISTS (
-         SELECT 1 FROM [dbo].[FACT_VENTA_DETALLE] d
-         WHERE d.id_venta_cab = c.id_venta_cab
-           AND d.periodo = c.periodo
-           AND d.id_producto IN (${cods.join(",")})
-       )
-     GROUP BY c.id_venta_cab, c.numero_factura, c.periodo
-     HAVING SUM(fp.monto_total) >= 20
-     ORDER BY c.periodo DESC`,
-    [idCliente]
-  );
-}
-
-// ── Sincronizar todos los retos automáticos (Datamart) + actualizar puntos ────
+// ── Sincronizar retos automáticos desde Datamart ──────────────────────────────
 routerUsuarios.get("/sincronizar-retos", async (req: Request, res: Response) => {
   const codCliente = Number(req.query.cod_cliente);
   const cartillaId = Number(req.query.cartilla_id);
-  
+
   console.log("Sincronizar retos - cod_cliente:", codCliente, "cartilla_id:", cartillaId);
+
   if (!cartillaId) {
     res.status(400).json({ error: "cartilla_id requerido" });
     return;
   }
 
-  // Sin cod_cliente el usuario no tiene data en el Datamart — devolver vacío sin error
   if (!codCliente) {
     res.json({ goleada: [], estrategica: [], foco: [], cartilla: null });
     return;
@@ -260,96 +187,15 @@ routerUsuarios.get("/sincronizar-retos", async (req: Request, res: Response) => 
   }
 
   try {
-    type FacturaRow = { numero_factura: string; periodo: number; monto_total: number };
-
-    const [bodegaRows, productosRows] = await Promise.all([
-      DatamartDataSource.query(
-        `SELECT id_bodega FROM [dbo].[DIM_BODEGA] WHERE empresa_general IN ('FC039', 'FC237')`
-      ) as Promise<{ id_bodega: number }[]>,
-      AppDataSource.query(
-        `SELECT cod_producto, tipo FROM productos WHERE activo = 1 AND tipo IN ('estrategica', 'foco')`
-      ) as Promise<{ cod_producto: string; tipo: string }[]>,
-    ]);
-
-    const idBodegas       = bodegaRows.map(b => b.id_bodega);
-    const codsEstrategica = productosRows.filter(p => p.tipo === "estrategica").map(p => `'${p.cod_producto}'`);
-    const codsFoco        = productosRows.filter(p => p.tipo === "foco").map(p => `'${p.cod_producto}'`);
-
-    const [goleadaRows, estrategicaRows, focoRows] = await Promise.all([
-      queryGoleada(codCliente, idBodegas),
-      queryEstrategica(codCliente, codsEstrategica),
-      queryFoco(codCliente, codsFoco),
-    ]) as [FacturaRow[], FacturaRow[], FacturaRow[]];
-
-    // Borrar retos automáticos previos para recalcular con deduplicación por prioridad.
-    // Los retos de tipo 'referido' no se tocan.
-    await AppDataSource.query(
-      `DELETE FROM retos WHERE cartilla_id = @0 AND tipo_reto IN ('contact_center', 'lineas_estrategicas', 'productos_focos')`,
-      [cartillaId]
-    );
-
-    // Deduplicar en orden de prioridad: contact_center > lineas_estrategicas > productos_focos.
-    // Una misma factura solo puede pertenecer al reto de mayor prioridad.
-    const seen = new Set<string>();
-    const toInsert: Partial<Reto>[] = [];
-
-    const displayGoleada: FacturaRow[] = [];
-    const displayEstrategica: FacturaRow[] = [];
-    const displayFoco: FacturaRow[] = [];
-
-    for (const row of goleadaRows) {
-      if (!seen.has(row.numero_factura)) {
-        seen.add(row.numero_factura);
-        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "contact_center", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado" });
-        displayGoleada.push(row);
-      }
-    }
-    for (const row of estrategicaRows) {
-      if (!seen.has(row.numero_factura)) {
-        seen.add(row.numero_factura);
-        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "lineas_estrategicas", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado" });
-        displayEstrategica.push(row);
-      }
-    }
-    for (const row of focoRows) {
-      if (!seen.has(row.numero_factura)) {
-        seen.add(row.numero_factura);
-        toInsert.push({ cartilla_id: cartillaId, tipo_reto: "productos_focos", monto: row.monto_total, numero_factura: row.numero_factura, estado: "registrado" });
-        displayFoco.push(row);
-      }
-    }
-
-    if (toInsert.length > 0) {
-      await AppDataSource.getRepository(Reto).insert(toInsert);
-    }
-
-    // Contar todos los retos de esta cartilla (incluyendo referidos) como fuente de verdad para puntos
-    const countResult = await AppDataSource.query(
-      `SELECT COUNT(*) AS total FROM retos WHERE cartilla_id = @0`,
-      [cartillaId]
-    ) as [{ total: number }];
-    const totalPuntos = Number(countResult[0]!.total);
-
-    const cartilla = await CartillaRepository.actualizarPuntos(cartillaId, totalPuntos);
-
-    res.json({
-      goleada: displayGoleada,
-      estrategica: displayEstrategica,
-      foco: displayFoco,
-      cartilla: {
-        id: cartilla.id,
-        puntos: cartilla.puntos,
-        estado: cartilla.estado,
-        fecha_inicio: cartilla.fecha_inicio,
-      },
-    });
+    const result = await DatamartRepository.sincronizarRetos(codCliente, cartillaId);
+    res.json(result);
   } catch (err) {
     console.error("[sincronizar-retos] Error:", err);
     res.status(500).json({ error: "Error al sincronizar retos" });
   }
 });
 
-// ── Registrar un reto ─────────────────────────────────────────────────────────
+// ── Registrar un reto genérico ────────────────────────────────────────────────
 routerUsuarios.post("/reto", async (req: Request, res: Response) => {
   const { cartilla_id, tipo_reto, monto, numero_factura, descripcion } = req.body ?? {};
 
@@ -368,13 +214,8 @@ routerUsuarios.post("/reto", async (req: Request, res: Response) => {
     }
     puntos_a_agregar = Math.floor((montoNum - 100) / 5) + 1;
   } else {
-    const montoMin = MONTOS_MIN[tipo_reto];
-    if (!montoMin) {
-      res.status(400).json({ error: "Tipo de reto no válido" });
-      return;
-    }
-    if (isNaN(montoNum) || montoNum < montoMin) {
-      res.status(400).json({ error: `El monto mínimo para este reto es $${montoMin}` });
+    if (isNaN(montoNum) || montoNum < MONTOS_MIN) {
+      res.status(400).json({ error: `El monto mínimo para este reto es $${MONTOS_MIN}` });
       return;
     }
   }
@@ -391,29 +232,11 @@ routerUsuarios.post("/reto", async (req: Request, res: Response) => {
 
     res.status(201).json({
       ok: true,
-      reto: {
-        id: reto.id,
-        tipo_reto: reto.tipo_reto,
-        monto: reto.monto,
-        fecha_registro: reto.fecha_registro,
-      },
-      cartilla: {
-        id: cartilla.id,
-        puntos: cartilla.puntos,
-        estado: cartilla.estado,
-        fecha_inicio: cartilla.fecha_inicio,
-      },
+      reto: { id: reto.id, tipo_reto: reto.tipo_reto, monto: reto.monto, fecha_registro: reto.fecha_registro },
+      cartilla: { id: cartilla.id, puntos: cartilla.puntos, estado: cartilla.estado, fecha_inicio: cartilla.fecha_inicio },
     });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error al registrar reto";
-    if (msg === "Cartilla no encontrada") {
-      res.status(404).json({ error: msg });
-    } else if (msg === "La cartilla no está activa") {
-      res.status(400).json({ error: msg });
-    } else {
-      console.error("[registrarReto] Error de BD:", err);
-      res.status(500).json({ error: "Error al guardar el reto" });
-    }
+  } catch (err) {
+    handleRetoError(err, res);
   }
 });
 
@@ -432,17 +255,7 @@ routerUsuarios.post("/reto/referido", async (req: Request, res: Response) => {
   }
 
   try {
-    const rows = await DatamartDataSource.query(
-      `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
-       FROM [dbo].[FACT_VENTA_CABECERA] c
-       INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
-         ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
-       WHERE c.numero_factura = @0
-         AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
-       GROUP BY c.id_venta_cab, c.numero_factura, c.periodo
-       HAVING SUM(fp.monto_total) >= 20`,
-      [numero_factura.trim()]
-    ) as { monto_total: number }[];
+    const rows = await DatamartRepository.queryReferido(numero_factura.trim());
 
     if (rows.length === 0) {
       res.status(400).json({ error: "Factura no encontrada o no califica (monto < $20 o fuera del período)" });
@@ -475,20 +288,12 @@ routerUsuarios.post("/reto/referido", async (req: Request, res: Response) => {
       reto: { id: reto.id, tipo_reto: reto.tipo_reto, monto: reto.monto, fecha_registro: reto.fecha_registro },
       cartilla: { id: cartilla.id, puntos: cartilla.puntos, estado: cartilla.estado, fecha_inicio: cartilla.fecha_inicio },
     });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error al registrar reto";
-    if (msg === "Cartilla no encontrada") {
-      res.status(404).json({ error: msg });
-    } else if (msg === "La cartilla no está activa") {
-      res.status(400).json({ error: msg });
-    } else {
-      console.error("[registrarReferido] Error:", err);
-      res.status(500).json({ error: "Error al guardar el reto" });
-    }
+  } catch (err) {
+    handleRetoError(err, res);
   }
 });
 
-// ── Historial de cartillas de un usuario ───────────────────────────────────────
+// ── Historial de cartillas de un usuario ──────────────────────────────────────
 routerUsuarios.get("/historial", async (req: Request, res: Response) => {
   const usuario_id = req.query.usuario_id as string | undefined;
 
@@ -518,7 +323,7 @@ routerUsuarios.get("/historial", async (req: Request, res: Response) => {
   }
 });
 
-// ── Retos de una cartilla específica ───────────────────────────────────────────
+// ── Retos de una cartilla específica ──────────────────────────────────────────
 routerUsuarios.get("/retos/:cartillaId", async (req: Request, res: Response) => {
   const cartillaId = parseInt(req.params.cartillaId!);
   if (isNaN(cartillaId)) {
@@ -535,7 +340,7 @@ routerUsuarios.get("/retos/:cartillaId", async (req: Request, res: Response) => 
   }
 });
 
-// ── Iniciar nueva cartilla (después de completar una) ─────────────────────────
+// ── Iniciar nueva cartilla ─────────────────────────────────────────────────────
 routerUsuarios.post("/nueva-cartilla", async (req: Request, res: Response) => {
   const { usuario_id } = req.body ?? {};
 
@@ -566,7 +371,7 @@ routerUsuarios.post("/nueva-cartilla", async (req: Request, res: Response) => {
   }
 });
 
-// ── Rutas legacy de retiros (se mantienen para compatibilidad) ─────────────────
+// ── Rutas de retiros ───────────────────────────────────────────────────────────
 routerUsuarios.post("/plan", async (req: Request, res: Response) => {
   const { cartilla_id, farmacia_id, fecha_retiro, hora_retiro } = req.body ?? {};
 
@@ -581,14 +386,8 @@ routerUsuarios.post("/plan", async (req: Request, res: Response) => {
       FarmaciaRepository.buscarPorId(Number(farmacia_id)),
     ]);
 
-    if (!cartilla) {
-      res.status(404).json({ error: "Cartilla no encontrada" });
-      return;
-    }
-    if (!farmacia) {
-      res.status(400).json({ error: "Farmacia no válida" });
-      return;
-    }
+    if (!cartilla) { res.status(404).json({ error: "Cartilla no encontrada" }); return; }
+    if (!farmacia) { res.status(400).json({ error: "Farmacia no válida" }); return; }
     if (cartilla.estado !== "completa" && cartilla.puntos < 10) {
       res.status(400).json({ error: "La cartilla no tiene los puntos suficientes" });
       return;
@@ -635,10 +434,7 @@ routerUsuarios.put("/plan/:id", async (req: Request, res: Response) => {
 
   try {
     const farmacia = await FarmaciaRepository.buscarPorId(Number(farmacia_id));
-    if (!farmacia) {
-      res.status(400).json({ error: "Farmacia no válida" });
-      return;
-    }
+    if (!farmacia) { res.status(400).json({ error: "Farmacia no válida" }); return; }
 
     const horaFormateada = hora_retiro.length === 5 ? `${hora_retiro}:00` : hora_retiro;
     const plan = await PlanRetiroRepository.actualizar(id, {
@@ -647,10 +443,7 @@ routerUsuarios.put("/plan/:id", async (req: Request, res: Response) => {
       hora_retiro: horaFormateada,
     });
 
-    if (!plan) {
-      res.status(404).json({ error: "Retiro no encontrado" });
-      return;
-    }
+    if (!plan) { res.status(404).json({ error: "Retiro no encontrado" }); return; }
 
     res.json({
       id: plan.id,
