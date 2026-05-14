@@ -1,10 +1,20 @@
 import { AppDataSource, DatamartDataSource } from "../data-source";
 import { Reto } from "../entities/Reto";
 import { CartillaRepository } from "./CartillaRepository";
+import { SisParamRepository } from "./SisParamRepository";
 
-// ── Rango de fechas para los retos (cambiar para demos) ──────────────────────
-export const RETO_PERIODO_INICIO = 20251215;
-export const RETO_PERIODO_FIN    = 20260115;
+async function leerPeriodos(): Promise<{ inicio: number; fin: number }> {
+  // lee tabla de parametros del sistema para poder cambiar con facilidad desde el panel de admin
+  const [inicio, fin] = await Promise.all([
+    SisParamRepository.buscarPorKey("periodo_inicio"),
+    SisParamRepository.buscarPorKey("periodo_final"),
+  ]);
+  return {
+    // Con Fallbacks si los parámetros no existen en sis_params
+    inicio: inicio ? Number(inicio) : 20251215,
+    fin:    fin    ? Number(fin)    : 20260115,
+  };
+}
 
 export type FacturaRow = {
   numero_factura: string;
@@ -29,7 +39,7 @@ export const DatamartRepository = {
     return rows[0] ?? null;
   },
 
-  async queryGoleada(idCliente: number, idBodegas: number[]): Promise<FacturaRow[]> {
+  async queryGoleada(idCliente: number, idBodegas: number[], inicio: number, fin: number): Promise<FacturaRow[]> {
     if (idBodegas.length === 0) return [];
     return DatamartDataSource.query(
       `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
@@ -37,7 +47,7 @@ export const DatamartRepository = {
        INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
          ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
        WHERE c.id_cliente = @0
-         AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
+         AND c.periodo >= ${inicio} AND c.periodo <= ${fin}
          AND c.id_bodega IN (${idBodegas.join(",")})
        GROUP BY c.id_venta_cab, c.numero_factura, c.periodo
        HAVING SUM(fp.monto_total) >= 20
@@ -46,7 +56,7 @@ export const DatamartRepository = {
     );
   },
 
-  async queryEstrategica(idCliente: number, cods: string[], idBodegas: number[]): Promise<FacturaRow[]> {
+  async queryEstrategica(idCliente: number, cods: string[], idBodegas: number[], inicio: number, fin: number): Promise<FacturaRow[]> {
     if (cods.length === 0 || idBodegas.length === 0) return [];
     return DatamartDataSource.query(
       `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
@@ -54,7 +64,7 @@ export const DatamartRepository = {
        INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
          ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
        WHERE c.id_cliente = @0
-         AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
+         AND c.periodo >= ${inicio} AND c.periodo <= ${fin}
          AND c.id_bodega IN (${idBodegas.join(",")})
          AND EXISTS (
            SELECT 1 FROM [dbo].[FACT_VENTA_DETALLE] d
@@ -69,7 +79,7 @@ export const DatamartRepository = {
     );
   },
 
-  async queryFoco(idCliente: number, cods: string[], idBodegas: number[]): Promise<FacturaRow[]> {
+  async queryFoco(idCliente: number, cods: string[], idBodegas: number[], inicio: number, fin: number): Promise<FacturaRow[]> {
     if (cods.length === 0 || idBodegas.length === 0) return [];
     return DatamartDataSource.query(
       `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
@@ -77,7 +87,7 @@ export const DatamartRepository = {
        INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
          ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
        WHERE c.id_cliente = @0
-         AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
+         AND c.periodo >= ${inicio} AND c.periodo <= ${fin}
          AND c.id_bodega IN (${idBodegas.join(",")})
          AND EXISTS (
            SELECT 1 FROM [dbo].[FACT_VENTA_DETALLE] d
@@ -93,13 +103,14 @@ export const DatamartRepository = {
   },
 
   async queryReferido(numeroFactura: string): Promise<{ monto_total: number }[]> {
+    const { inicio, fin } = await leerPeriodos();
     return DatamartDataSource.query(
       `SELECT c.numero_factura, c.periodo, SUM(fp.monto_total) AS monto_total
        FROM [dbo].[FACT_VENTA_CABECERA] c
        INNER JOIN [dbo].[FACT_VENTA_FORMA_PAGO] fp
          ON fp.id_venta_cab = c.id_venta_cab AND fp.periodo = c.periodo
        WHERE c.numero_factura = @0
-         AND c.periodo >= ${RETO_PERIODO_INICIO} AND c.periodo <= ${RETO_PERIODO_FIN}
+         AND c.periodo >= ${inicio} AND c.periodo <= ${fin}
        GROUP BY c.id_venta_cab, c.numero_factura, c.periodo
        HAVING SUM(fp.monto_total) >= 20`,
       [numeroFactura]
@@ -123,10 +134,12 @@ export const DatamartRepository = {
     const codsEstrategica = productosRows.filter(p => p.tipo === "estrategica").map(p => `'${p.cod_producto}'`);
     const codsFoco        = productosRows.filter(p => p.tipo === "foco").map(p => `'${p.cod_producto}'`);
 
+    const { inicio, fin } = await leerPeriodos();
+
     const [goleadaRows, estrategicaRows, focoRows, facturasUsadasRows] = await Promise.all([
-      this.queryGoleada(codCliente, idBodegas),
-      this.queryEstrategica(codCliente, codsEstrategica, idBodegas),
-      this.queryFoco(codCliente, codsFoco, idBodegas),
+      this.queryGoleada(codCliente, idBodegas, inicio, fin),
+      this.queryEstrategica(codCliente, codsEstrategica, idBodegas, inicio, fin),
+      this.queryFoco(codCliente, codsFoco, idBodegas, inicio, fin),
       // Facturas ya registradas en cartillas anteriores del mismo usuario
       AppDataSource.query(
         `SELECT DISTINCT r.numero_factura

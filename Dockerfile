@@ -1,0 +1,32 @@
+# ── Etapa 1: build del frontend ──────────────────────────────────────────────
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+# ── Etapa 2: imagen de producción ─────────────────────────────────────────────
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Solo dependencias de producción + tsx para correr el servidor
+COPY package*.json ./
+RUN npm ci --omit=dev && npm install tsx
+
+# Frontend compilado
+COPY --from=builder /app/dist ./dist
+
+# Código del servidor
+COPY server ./server
+COPY tsconfig*.json ./
+
+ENV NODE_ENV=production
+
+EXPOSE 3001
+
+CMD ["npx", "tsx", "server/index.ts"]

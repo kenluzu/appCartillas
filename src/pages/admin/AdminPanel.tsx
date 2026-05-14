@@ -7,7 +7,7 @@ import type { Farmacia } from "../../lib/types";
 import { adminGetFarmacias, adminCrearFarmacia, adminActualizarFarmacia, adminEliminarFarmacia } from "../../lib/farmacias";
 import { adminGetEstadisticas } from "../../lib/admin";
 
-type Tab = "estadisticas" | "farmacias" | "puntaje" | "excel";
+type Tab = "estadisticas" | "farmacias" | "puntaje" | "excel" | "params";
 
 function formatFecha(fecha: string): string {
   const d = new Date(fecha);
@@ -83,6 +83,16 @@ export function AdminPanel() {
   const [procesandoExcel, setProcesandoExcel] = useState(false);
   const [resultadoExcel, setResultadoExcel] = useState<{ ok: boolean; mensaje: string } | null>(null);
 
+  // Params
+  type SisParam = { id: number; key: string; value: string };
+  const [params, setParams] = useState<SisParam[]>([]);
+  const [paramEditId, setParamEditId] = useState<number | null>(null);
+  const [paramEditValue, setParamEditValue] = useState("");
+  const [paramNuevoKey, setParamNuevoKey] = useState("");
+  const [paramNuevoValue, setParamNuevoValue] = useState("");
+  const [paramError, setParamError] = useState("");
+  const [paramCargando, setParamCargando] = useState(false);
+
   function handleUnauthorized() {
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_nombre");
@@ -98,7 +108,60 @@ export function AdminPanel() {
     if (tab === "estadisticas") loadStats();
     if (tab === "puntaje") loadCartillas(1, busquedaCartilla, filtroEstadoCartilla);
     if (tab === "farmacias") loadFarmacias();
+    if (tab === "params") loadParams();
   }, [tab]);
+
+  async function loadParams() {
+    try {
+      const res = await fetch("/api/admin/params", { headers: authHeaders() });
+      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
+      setParams(await res.json());
+    } catch { /* silencioso */ }
+  }
+
+  async function crearParam() {
+    if (!paramNuevoKey.trim() || !paramNuevoValue.trim()) {
+      setParamError("Key y value son requeridos"); return;
+    }
+    setParamCargando(true); setParamError("");
+    try {
+      const res = await fetch("/api/admin/params", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ key: paramNuevoKey.trim(), value: paramNuevoValue.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setParamError(data.error ?? "Error al crear"); return; }
+      setParams(prev => [...prev, data].sort((a, b) => a.key.localeCompare(b.key)));
+      setParamNuevoKey(""); setParamNuevoValue("");
+    } catch { setParamError("Error de conexión"); }
+    finally { setParamCargando(false); }
+  }
+
+  async function guardarParam(id: number) {
+    setParamCargando(true); setParamError("");
+    try {
+      const res = await fetch(`/api/admin/params/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ value: paramEditValue }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setParamError(data.error ?? "Error al guardar"); return; }
+      setParams(prev => prev.map(p => p.id === id ? data : p));
+      setParamEditId(null);
+    } catch { setParamError("Error de conexión"); }
+    finally { setParamCargando(false); }
+  }
+
+  async function eliminarParam(id: number) {
+    if (!confirm("¿Eliminar este parámetro?")) return;
+    try {
+      const res = await fetch(`/api/admin/params/${id}`, { method: "DELETE", headers: authHeaders() });
+      if (!res.ok) return;
+      setParams(prev => prev.filter(p => p.id !== id));
+    } catch { /* silencioso */ }
+  }
 
   useEffect(() => {
     if (tab !== "puntaje") return;
@@ -322,15 +385,6 @@ export function AdminPanel() {
       ),
     },
     {
-      key: "farmacias",
-      label: "Farmacias",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
-        </svg>
-      ),
-    },
-    {
       key: "puntaje",
       label: "Puntaje",
       icon: (
@@ -345,6 +399,16 @@ export function AdminPanel() {
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+      ),
+    },
+    {
+      key: "params",
+      label: "Parámetros",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
     },
@@ -882,6 +946,82 @@ export function AdminPanel() {
                 </svg>
                 {procesandoExcel ? "Importando..." : `Importar ${filasExcel.length > 0 ? filasExcel.length + " registros" : "archivo"}`}
               </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* Parámetros del sistema */}
+        {tab === "params" && (
+          <div className="max-w-xl mx-auto space-y-4">
+
+            {/* Formulario nuevo parámetro */}
+            <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Nuevo parámetro</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={paramNuevoKey}
+                  onChange={e => { setParamNuevoKey(e.target.value); setParamError(""); }}
+                  placeholder="key"
+                  className="flex-1 border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  value={paramNuevoValue}
+                  onChange={e => { setParamNuevoValue(e.target.value); setParamError(""); }}
+                  placeholder="value"
+                  className="flex-1 border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-transparent"
+                />
+                <button
+                  onClick={crearParam}
+                  disabled={paramCargando}
+                  className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-900 font-bold text-sm rounded-xl transition-colors cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+              {paramError && <p className="mt-2 text-red-500 text-xs">{paramError}</p>}
+            </div>
+
+            {/* Lista de parámetros */}
+            <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
+              {params.length === 0 ? (
+                <p className="text-gray-300 text-sm text-center py-10">No hay parámetros configurados</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {params.map(p => (
+                    <div key={p.id} className="px-5 py-3.5 flex items-center gap-3">
+                      <span className="text-xs font-mono font-semibold text-indigo-600 shrink-0 w-44 truncate" title={p.key}>{p.key}</span>
+                      {paramEditId === p.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={paramEditValue}
+                            onChange={e => setParamEditValue(e.target.value)}
+                            autoFocus
+                            className="flex-1 border border-gray-200 bg-gray-50 rounded-lg px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                            onKeyDown={e => { if (e.key === "Enter") guardarParam(p.id); if (e.key === "Escape") setParamEditId(null); }}
+                          />
+                          <button onClick={() => guardarParam(p.id)} disabled={paramCargando} className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold cursor-pointer whitespace-nowrap">Guardar</button>
+                          <button onClick={() => setParamEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">Cancelar</button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-sm text-gray-700 truncate" title={p.value}>{p.value}</span>
+                          <button
+                            onClick={() => { setParamEditId(p.id); setParamEditValue(p.value); setParamError(""); }}
+                            className="text-xs text-gray-400 hover:text-gray-700 cursor-pointer whitespace-nowrap"
+                          >
+                            Editar
+                          </button>
+                          <button onClick={() => eliminarParam(p.id)} className="text-xs text-red-400 hover:text-red-600 cursor-pointer">Eliminar</button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>

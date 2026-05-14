@@ -1,0 +1,50 @@
+services:
+  dbCartillas:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD}
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - dbCartillasdata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${DB_PASSWORD}", "-Q", "SELECT 1", "-C"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  appCartillas:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      dbCartillas:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+
+      # Base de datos cartillas (apunta al servicio db)
+      DB_HOST: dbCartillas
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-dbCartillas}
+
+      # Datamart (servidor externo)
+      DB_DATAMART_HOST: ${DB_DATAMART_HOST}
+      DB_DATAMART_PORT: ${DB_DATAMART_PORT:-1433}
+      DB_DATAMART_DOMAIN: ${DB_DATAMART_DOMAIN:-}
+      DB_DATAMART_USER: ${DB_DATAMART_USER}
+      DB_DATAMART_PASSWORD: ${DB_DATAMART_PASSWORD}
+      DB_DATAMART_NAME: ${DB_DATAMART_NAME}
+
+      # Auth
+      JWT_SECRET: ${JWT_SECRET}
+
+volumes:
+  dbCartillasdata:

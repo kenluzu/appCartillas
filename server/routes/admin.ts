@@ -11,6 +11,7 @@ import { AppDataSource } from "../data-source";
 import { Usuario } from "../entities/Usuario";
 import { Cartilla } from "../entities/Cartilla";
 import { ComercialCumplimientoRepository } from "../repositories/ComercialCumplimientoRepository";
+import { SisParamRepository } from "../repositories/SisParamRepository";
 
 export const routerAdmin = Router();
 
@@ -373,5 +374,60 @@ routerAdmin.get("/comercial", authMiddleware, async (_req: Request, res: Respons
   } catch (err) {
     console.error("[comercial] Error:", err);
     res.status(500).json({ error: "Error al obtener datos comerciales" });
+  }
+});
+
+// ── Parámetros del sistema ────────────────────────────────────────────────────
+routerAdmin.get("/params", async (_req: Request, res: Response) => {
+  try {
+    res.json(await SisParamRepository.listar());
+  } catch (err) {
+    console.error("[params] Error:", err);
+    res.status(500).json({ error: "Error al obtener parámetros" });
+  }
+});
+
+routerAdmin.post("/params", async (req: Request, res: Response) => {
+  const { key, value } = req.body ?? {};
+  if (!key?.trim() || value === undefined) {
+    res.status(400).json({ error: "key y value son requeridos" }); return;
+  }
+  try {
+    const param = await SisParamRepository.crear(key, String(value));
+    res.status(201).json(param);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("Violation of UNIQUE") || msg.includes("duplicate")) {
+      res.status(409).json({ error: "Ya existe un parámetro con ese key" }); return;
+    }
+    res.status(500).json({ error: "Error al crear parámetro" });
+  }
+});
+
+routerAdmin.put("/params/:id", async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { value } = req.body ?? {};
+  if (!id || value === undefined) {
+    res.status(400).json({ error: "value es requerido" }); return;
+  }
+  try {
+    const param = await SisParamRepository.actualizar(id, String(value));
+    if (!param) { res.status(404).json({ error: "Parámetro no encontrado" }); return; }
+    res.json(param);
+  } catch (err) {
+    console.error("[params] Error:", err);
+    res.status(500).json({ error: "Error al actualizar parámetro" });
+  }
+});
+
+routerAdmin.delete("/params/:id", async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "id requerido" }); return; }
+  try {
+    await SisParamRepository.eliminar(id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[params] Error:", err);
+    res.status(500).json({ error: "Error al eliminar parámetro" });
   }
 });

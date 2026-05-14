@@ -66,12 +66,12 @@ export function AdminLogin() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cédula</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Usuario</label>
               <input
                 type="text"
                 value={form.cedula}
                 onChange={e => setForm(p => ({ ...p, cedula: e.target.value }))}
-                placeholder="Cédula de administrador"
+                placeholder="Usuario de administrador"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 placeholder:text-gray-300"
               />
             </div>
