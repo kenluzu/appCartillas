@@ -10,6 +10,7 @@ import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
 import { AppDataSource } from "../data-source";
 import { Usuario } from "../entities/Usuario";
 import { Cartilla } from "../entities/Cartilla";
+import { ComercialCumplimientoRepository } from "../repositories/ComercialCumplimientoRepository";
 
 export const routerAdmin = Router();
 
@@ -343,5 +344,34 @@ routerAdmin.get("/usuarios", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[listarUsuarios] Error de BD:", err);
     res.status(500).json({ error: "Error al obtener usuarios" });
+  }
+});
+
+// ── Comercial: importar Excel ─────────────────────────────────────────────────
+routerAdmin.post("/comercial/importar", authMiddleware, async (req: Request, res: Response) => {
+  const filas = req.body as { usuario: string; volumen: number; utilidad: number; estrategica: number }[];
+
+  if (!Array.isArray(filas) || filas.length === 0) {
+    res.status(400).json({ error: "No se recibieron filas válidas" });
+    return;
+  }
+
+  try {
+    const { insertados, actualizados } = await ComercialCumplimientoRepository.importar(filas);
+    res.json({ ok: true, insertados, actualizados });
+  } catch (err) {
+    console.error("[comercial/importar] Error:", err);
+    res.status(500).json({ error: "Error al importar datos" });
+  }
+});
+
+// ── Comercial: listar ─────────────────────────────────────────────────────────
+routerAdmin.get("/comercial", authMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const datos = await ComercialCumplimientoRepository.buscarTodos();
+    res.json(datos);
+  } catch (err) {
+    console.error("[comercial] Error:", err);
+    res.status(500).json({ error: "Error al obtener datos comerciales" });
   }
 });

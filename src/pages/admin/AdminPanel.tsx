@@ -76,6 +76,12 @@ export function AdminPanel() {
   const [cargandoCartillas, setCargandoCartillas] = useState(false);
   const [urlMap, setUrlMap] = useState<Record<number, string>>({});
   const [savingCartillaId, setSavingCartillaId] = useState<number | null>(null);
+  // Excel comercial tab state
+  type FilaComercial = { usuario: string; volumen: number; utilidad: number; estrategica: number };
+  const [filasExcel, setFilasExcel] = useState<FilaComercial[]>([]);
+  const [archivoNombre, setArchivoNombre] = useState("");
+  const [procesandoExcel, setProcesandoExcel] = useState(false);
+  const [resultadoExcel, setResultadoExcel] = useState<{ ok: boolean; mensaje: string } | null>(null);
 
   function handleUnauthorized() {
     localStorage.removeItem("admin_token");
@@ -393,6 +399,70 @@ export function AdminPanel() {
     slate:   { bg: "bg-slate-100",  text: "text-slate-500",   num: "text-gray-600" },
     orange:  { bg: "bg-orange-50",  text: "text-orange-600",  num: "text-gray-800" },
   };
+
+  function parsearArchivoExcel(file: File) {
+    setResultadoExcel(null);
+    setFilasExcel([]);
+    setArchivoNombre(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]!]!;
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+        if (rows.length === 0) { setResultadoExcel({ ok: false, mensaje: "El archivo está vacío." }); return; }
+
+        const norm = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z]/g, "");
+        const header = Object.keys(rows[0]!);
+        const find = (claves: string[]) => header.find(h => claves.some(k => norm(h).includes(k))) ?? "";
+
+        const colUsuario    = find(["usuario", "nombre", "vendedor"]);
+        const colVolumen    = find(["volumen"]);
+        const colUtilidad   = find(["utilidad"]);
+        const colEstrategica = find(["le", "estrategica", "linea"]);
+
+        if (!colUsuario) { setResultadoExcel({ ok: false, mensaje: "No se encontró la columna de usuarios." }); return; }
+
+        const filas: FilaComercial[] = rows.map(r => ({
+          usuario:    String(r[colUsuario] ?? "").trim(),
+          volumen:    parseFloat(String(r[colVolumen] ?? "0").replace(",", ".")) || 0,
+          utilidad:   parseFloat(String(r[colUtilidad] ?? "0").replace(",", ".")) || 0,
+          estrategica: parseFloat(String(r[colEstrategica] ?? "0").replace(",", ".")) || 0,
+        })).filter(f => f.usuario !== "");
+
+        setFilasExcel(filas);
+      } catch {
+        setResultadoExcel({ ok: false, mensaje: "No se pudo leer el archivo. Verifica que sea un Excel válido." });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function procesarExcel() {
+    if (filasExcel.length === 0) return;
+    setProcesandoExcel(true);
+    setResultadoExcel(null);
+    try {
+      const res = await fetch("/api/admin/comercial/importar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("admin_token")}` },
+        body: JSON.stringify(filasExcel),
+      });
+      const data = await res.json() as { ok?: boolean; insertados?: number; actualizados?: number; error?: string };
+      if (res.ok) {
+        setResultadoExcel({ ok: true, mensaje: `Listo: ${data.insertados} nuevos · ${data.actualizados} actualizados.` });
+        setFilasExcel([]);
+        setArchivoNombre("");
+      } else {
+        setResultadoExcel({ ok: false, mensaje: data.error ?? "Error al importar." });
+      }
+    } catch {
+      setResultadoExcel({ ok: false, mensaje: "Error de conexión." });
+    } finally {
+      setProcesandoExcel(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f0f0f8]">
@@ -725,13 +795,10 @@ export function AdminPanel() {
                   </svg>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h2 className="font-bold text-gray-800 text-base">Carga de datos — Equipo Comercial</h2>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">Próximamente</span>
-                  </div>
+                  <h2 className="font-bold text-gray-800 text-base mb-1">Carga de datos — Equipo Comercial</h2>
                   <p className="text-sm text-gray-500 leading-relaxed">
-                    Sube el archivo Excel con el <strong>% de cumplimiento</strong> de los usuarios del canal Comercial.
-                    Los datos se procesarán automáticamente para calcular los puntos y oportunidades de cada vendedor.
+                    Sube el archivo Excel con el <strong>% de cumplimiento</strong> del equipo comercial.
+                    Columnas esperadas: <span className="font-mono text-xs bg-gray-100 px-1 rounded">usuarios</span>, <span className="font-mono text-xs bg-gray-100 px-1 rounded">Cumpl. Volumen</span>, <span className="font-mono text-xs bg-gray-100 px-1 rounded">Cumpl. Utilidad</span>, <span className="font-mono text-xs bg-gray-100 px-1 rounded">Cumpl LE</span>.
                   </p>
                 </div>
               </div>
@@ -741,48 +808,81 @@ export function AdminPanel() {
             <div className="bg-white rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Archivo Excel</p>
 
-              {/* Drop zone */}
-              <div className="border-2 border-dashed border-gray-200 rounded-2xl px-6 py-10 flex flex-col items-center gap-3 bg-gray-50/50 cursor-not-allowed opacity-60 select-none">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
+              <label className="block cursor-pointer">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) parsearArchivoExcel(f); e.target.value = ""; }}
+                />
+                <div className={`border-2 border-dashed rounded-2xl px-6 py-10 flex flex-col items-center gap-3 transition-colors ${archivoNombre && filasExcel.length > 0 ? "border-emerald-300 bg-emerald-50/40" : "border-gray-200 bg-gray-50/50 hover:border-emerald-300 hover:bg-emerald-50/30"}`}>
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    {archivoNombre && filasExcel.length > 0 ? (
+                      <>
+                        <p className="text-sm font-semibold text-emerald-700">{archivoNombre}</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">{filasExcel.length} filas detectadas — haz clic para cambiar</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-gray-500">Haz clic para seleccionar</p>
+                        <p className="text-xs text-gray-400 mt-0.5">.xlsx · .xls</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-gray-500">Arrastra tu archivo aquí</p>
-                  <p className="text-xs text-gray-400 mt-0.5">o haz clic para seleccionar</p>
+              </label>
+
+              {/* Preview tabla */}
+              {filasExcel.length > 0 && (
+                <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 text-gray-400 font-bold uppercase tracking-wider">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Usuario</th>
+                        <th className="px-3 py-2 text-right">Volumen</th>
+                        <th className="px-3 py-2 text-right">Utilidad</th>
+                        <th className="px-3 py-2 text-right">LE</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filasExcel.slice(0, 5).map((f, i) => (
+                        <tr key={i} className="text-gray-700">
+                          <td className="px-3 py-2">{f.usuario}</td>
+                          <td className="px-3 py-2 text-right">{f.volumen}</td>
+                          <td className="px-3 py-2 text-right">{f.utilidad}</td>
+                          <td className="px-3 py-2 text-right">{f.estrategica}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filasExcel.length > 5 && (
+                    <p className="text-center text-xs text-gray-300 py-2">… y {filasExcel.length - 5} filas más</p>
+                  )}
                 </div>
-                <p className="text-xs text-gray-300 font-mono">.xlsx · .xls</p>
-              </div>
+              )}
+
+              {resultadoExcel && (
+                <div className={`mt-4 rounded-xl px-4 py-3 text-sm font-medium ${resultadoExcel.ok ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {resultadoExcel.mensaje}
+                </div>
+              )}
 
               <button
-                disabled
-                className="mt-4 w-full flex items-center justify-center gap-2 bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl text-sm transition-colors cursor-not-allowed"
+                onClick={procesarExcel}
+                disabled={filasExcel.length === 0 || procesandoExcel}
+                className="mt-4 w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                Procesar archivo
+                {procesandoExcel ? "Importando..." : `Importar ${filasExcel.length > 0 ? filasExcel.length + " registros" : "archivo"}`}
               </button>
             </div>
-
-            {/* Info formato TODO: COMENTADO HASTA SABER EL FORMATO*/}
-            {/*<div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Formato esperado</p>
-              <div className="space-y-2">
-                {["Cédula del vendedor", "% Cumplimiento — Utilidad", "% Cumplimiento — Productos Focos", "% Cumplimiento — Volumen", "% Cumplimiento — Líneas Estratégicas"].map((col, i) => (
-                  <div key={col} className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-lg bg-[#f0f0f8] text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">
-                      {String.fromCharCode(65 + i)}
-                    </span>
-                    <span className="text-sm text-gray-600">{col}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-300 mt-4">
-                * El formato exacto de columnas puede variar. Se definirá junto al equipo antes de habilitar la carga.
-              </p>
-            </div>*/}
 
           </div>
         )}
