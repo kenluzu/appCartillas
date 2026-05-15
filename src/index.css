@@ -13,7 +13,7 @@
 
   body {
     @apply min-w-[320px] min-h-screen m-0;
-    background-image: url('./assets/fondomundialistahorizontal.png');
+    background-image: url('./assets/fondomundialistahorizontal.webp');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;

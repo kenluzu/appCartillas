@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
-import fondoWeb from "../assets/fondo-web.png";
-import fondoResponsive from "../assets/fondo-responsive.jpg";
+import fondoWeb from "../assets/fondo-web.webp";
+import fondoResponsive from "../assets/fondo-responsive.webp";
 
 export function SelectorCanal() {
   const { setCanal, setUsuario, setCartilla, setRetiro, setComercialMetricas } = useApp();
