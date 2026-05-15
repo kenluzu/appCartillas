@@ -3,7 +3,6 @@ import { DataSource } from "typeorm";
 import { Usuario } from "./entities/Usuario";
 import { Cartilla } from "./entities/Cartilla";
 import { PlanRetiro } from "./entities/PlanRetiro";
-import { Farmacia } from "./entities/Farmacia";
 import { Reto } from "./entities/Reto";
 import { ComercialCumplimiento } from "./entities/ComercialCumplimiento";
 import { SisParam } from "./entities/SisParam";
@@ -14,11 +13,12 @@ dotenv.config();
 export const AppDataSource = new DataSource({
   type: "mssql",
   host: process.env.DB_HOST,
+  domain: process.env.DB_DOMAIN,
   port: Number(process.env.DB_PORT ?? 1433),
-  username: process.env.DB_USER ?? "sa",
-  password: process.env.DB_PASSWORD ?? "codeFather2000!",
-  database: process.env.DB_NAME ?? "dbCartillas",
-  entities: [Usuario, Cartilla, PlanRetiro, Farmacia, Reto, ComercialCumplimiento, SisParam],
+  username: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  entities: [Usuario, Cartilla, PlanRetiro, Reto, ComercialCumplimiento, SisParam],
   synchronize: false,
   logging: process.env.NODE_ENV !== "production",
   options: {

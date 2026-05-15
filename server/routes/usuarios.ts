@@ -2,7 +2,6 @@ import { Router, type Request, type Response } from "express";
 import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
 import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
-import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
 import { RetoRepository } from "../repositories/RetoRepository";
 import { DatamartRepository } from "../repositories/DatamartRepository";
 import { ComercialCumplimiento } from "../entities/ComercialCumplimiento";
@@ -28,17 +27,6 @@ function handleRetoError(err: unknown, res: Response) {
   if (msg === "La cartilla no está activa") return void res.status(400).json({ error: msg });
   res.status(500).json({ error: "Error al guardar el reto" });
 }
-
-routerUsuarios.get("/farmacias", async (_req: Request, res: Response) => {
-  // Obtener listado de farmacias para selección en el plan de retiro
-  try {
-    const farmacias = await FarmaciaRepository.buscarTodas();
-    res.json(farmacias);
-  } catch (err) {
-    console.error("[farmacias] Error de BD:", err);
-    res.status(500).json({ error: "Error al obtener farmacias" });
-  }
-});
 
 routerUsuarios.get("/validar", async (req: Request, res: Response) => {
   // Validamos que cedula exista en el Datamart y si no existe, la creamos en nuestra BD de dbCartillas
@@ -88,13 +76,9 @@ routerUsuarios.get("/validar", async (req: Request, res: Response) => {
 
     let retiro = null;
     if (planExistente) {
-      const farmacia = await FarmaciaRepository.buscarPorId(planExistente.farmacia_id);
       retiro = {
         id: planExistente.id,
         cartilla_id: planExistente.cartilla_id,
-        farmacia_id: planExistente.farmacia_id,
-        farmacia_nombre: farmacia?.nombre ?? "",
-        farmacia_direccion: farmacia?.direccion ?? "",
         fecha_retiro: planExistente.fecha_retiro,
         hora_retiro: horaStr(planExistente.hora_retiro),
         estado: planExistente.estado,
@@ -383,21 +367,17 @@ routerUsuarios.post("/nueva-cartilla", async (req: Request, res: Response) => {
 
 // ── Rutas de retiros ───────────────────────────────────────────────────────────
 routerUsuarios.post("/plan", async (req: Request, res: Response) => {
-  const { cartilla_id, farmacia_id, fecha_retiro, hora_retiro } = req.body ?? {};
+  const { cartilla_id, fecha_retiro, hora_retiro } = req.body ?? {};
 
-  if (!cartilla_id || !farmacia_id || !fecha_retiro || !hora_retiro) {
+  if (!cartilla_id || !fecha_retiro || !hora_retiro) {
     res.status(400).json({ error: "Datos incompletos" });
     return;
   }
 
   try {
-    const [cartilla, farmacia] = await Promise.all([
-      CartillaRepository.buscarPorId(Number(cartilla_id)),
-      FarmaciaRepository.buscarPorId(Number(farmacia_id)),
-    ]);
+    const cartilla = await CartillaRepository.buscarPorId(Number(cartilla_id));
 
     if (!cartilla) { res.status(404).json({ error: "Cartilla no encontrada" }); return; }
-    if (!farmacia) { res.status(400).json({ error: "Farmacia no válida" }); return; }
     if (cartilla.estado !== "completa" && cartilla.puntos < 10) {
       res.status(400).json({ error: "La cartilla no tiene los puntos suficientes" });
       return;
@@ -412,7 +392,6 @@ routerUsuarios.post("/plan", async (req: Request, res: Response) => {
     const horaFormateada = hora_retiro.length === 5 ? `${hora_retiro}:00` : hora_retiro;
     const plan = await PlanRetiroRepository.crear({
       cartilla_id: cartilla.id,
-      farmacia_id: farmacia.id,
       fecha_retiro,
       hora_retiro: horaFormateada,
     });
@@ -420,9 +399,6 @@ routerUsuarios.post("/plan", async (req: Request, res: Response) => {
     res.status(201).json({
       id: plan.id,
       cartilla_id: plan.cartilla_id,
-      farmacia_id: plan.farmacia_id,
-      farmacia_nombre: farmacia.nombre,
-      farmacia_direccion: farmacia.direccion,
       fecha_retiro: plan.fecha_retiro,
       hora_retiro: horaStr(plan.hora_retiro),
       estado: plan.estado,
@@ -435,20 +411,16 @@ routerUsuarios.post("/plan", async (req: Request, res: Response) => {
 
 routerUsuarios.put("/plan/:id", async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { farmacia_id, fecha_retiro, hora_retiro } = req.body ?? {};
+  const { fecha_retiro, hora_retiro } = req.body ?? {};
 
-  if (!id || !farmacia_id || !fecha_retiro || !hora_retiro) {
+  if (!id || !fecha_retiro || !hora_retiro) {
     res.status(400).json({ error: "Datos incompletos" });
     return;
   }
 
   try {
-    const farmacia = await FarmaciaRepository.buscarPorId(Number(farmacia_id));
-    if (!farmacia) { res.status(400).json({ error: "Farmacia no válida" }); return; }
-
     const horaFormateada = hora_retiro.length === 5 ? `${hora_retiro}:00` : hora_retiro;
     const plan = await PlanRetiroRepository.actualizar(id, {
-      farmacia_id: farmacia.id,
       fecha_retiro,
       hora_retiro: horaFormateada,
     });
@@ -458,9 +430,6 @@ routerUsuarios.put("/plan/:id", async (req: Request, res: Response) => {
     res.json({
       id: plan.id,
       cartilla_id: plan.cartilla_id,
-      farmacia_id: plan.farmacia_id,
-      farmacia_nombre: farmacia.nombre,
-      farmacia_direccion: farmacia.direccion,
       fecha_retiro: plan.fecha_retiro,
       hora_retiro: horaStr(plan.hora_retiro),
       estado: plan.estado,

@@ -7,7 +7,6 @@ export type RetiroAdmin = {
   estado: string;
   fecha_retiro: string;
   hora_retiro: string;
-  farmacia_nombre: string;
   cedula: string;
   usuario_nombre: string;
   usuario_apellido: string;
@@ -17,7 +16,6 @@ export type RetiroAdmin = {
 
 export async function crearPlan(data: {
   cartilla_id: number;
-  farmacia_id: number;
   fecha_retiro: string;
   hora_retiro: string;
 }): Promise<Retiro> {
@@ -33,7 +31,7 @@ export async function crearPlan(data: {
 
 export async function actualizarPlan(
   id: number,
-  data: { farmacia_id: number; fecha_retiro: string; hora_retiro: string }
+  data: { fecha_retiro: string; hora_retiro: string }
 ): Promise<Retiro> {
   const res = await fetch(`/api/usuarios/plan/${id}`, {
     method: "PUT",

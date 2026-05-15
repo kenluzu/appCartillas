@@ -3,11 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Paginacion } from "../../components/Paginacion";
 import * as XLSX from "xlsx";
 import { useApp } from "../../context/AppContext";
-import type { Farmacia } from "../../lib/types";
-import { adminGetFarmacias, adminCrearFarmacia, adminActualizarFarmacia, adminEliminarFarmacia } from "../../lib/farmacias";
 import { adminGetEstadisticas } from "../../lib/admin";
 
-type Tab = "estadisticas" | "farmacias" | "puntaje" | "excel" | "params";
+type Tab = "estadisticas" | "puntaje" | "excel" | "params";
 
 function formatFecha(fecha: string): string {
   const d = new Date(fecha);
@@ -59,10 +57,6 @@ export function AdminPanel() {
   const [tab, setTab] = useState<Tab>("estadisticas");
   const [stats, setStats] = useState<Stats | null>(null);
   const [cartillas, setCartillas] = useState<CartillaAdmin[]>([]);
-  const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [farmaciaEditId, setFarmaciaEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ nombre: "", direccion: "", latitud: "", longitud: "", cantidad: "0" });
   const [loadingStats, setLoadingStats] = useState(false);
   const [statsError, setStatsError] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -107,7 +101,6 @@ export function AdminPanel() {
   useEffect(() => {
     if (tab === "estadisticas") loadStats();
     if (tab === "puntaje") loadCartillas(1, busquedaCartilla, filtroEstadoCartilla);
-    if (tab === "farmacias") loadFarmacias();
     if (tab === "params") loadParams();
   }, [tab]);
 
@@ -211,78 +204,6 @@ export function AdminPanel() {
       setMensaje("Error al cargar cartillas");
     } finally {
       setCargandoCartillas(false);
-    }
-  }
-
-  async function loadFarmacias() {
-    const token = getToken();
-    if (!token) { handleUnauthorized(); return; }
-    try {
-      setFarmacias(await adminGetFarmacias(token));
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message === "UNAUTHORIZED") { handleUnauthorized(); return; }
-      setMensaje("Error al cargar farmacias");
-    }
-  }
-
-  function abrirModalCrear() {
-    setFarmaciaEditId(null);
-    setForm({ nombre: "", direccion: "", latitud: "", longitud: "", cantidad: "0" });
-    setModalAbierto(true);
-  }
-
-  function abrirModalEditar(f: Farmacia) {
-    setFarmaciaEditId(f.id);
-    setForm({ nombre: f.nombre, direccion: f.direccion, latitud: String(f.latitud), longitud: String(f.longitud), cantidad: String(f.cantidad) });
-    setModalAbierto(true);
-  }
-
-  async function handleSubmitFarmacia(e: React.FormEvent) {
-    e.preventDefault();
-    const token = getToken();
-    if (!token) { handleUnauthorized(); return; }
-    const data = {
-      nombre: form.nombre.trim(),
-      direccion: form.direccion.trim(),
-      latitud: parseFloat(form.latitud),
-      longitud: parseFloat(form.longitud),
-      cantidad: parseInt(form.cantidad),
-    };
-    setCargando(true);
-    try {
-      if (farmaciaEditId) {
-        await adminActualizarFarmacia(token, farmaciaEditId, data);
-        setMensaje("Farmacia actualizada");
-      } else {
-        await adminCrearFarmacia(token, data);
-        setMensaje("Farmacia creada");
-      }
-      setModalAbierto(false);
-      loadFarmacias();
-      setTimeout(() => setMensaje(""), 3000);
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message === "UNAUTHORIZED") { handleUnauthorized(); return; }
-      setMensaje("Error: " + (e instanceof Error ? e.message : "Error desconocido"));
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function handleEliminarFarmacia(id: number) {
-    if (!confirm("¿Eliminar esta farmacia? Esta acción no se puede deshacer.")) return;
-    const token = getToken();
-    if (!token) { handleUnauthorized(); return; }
-    setCargando(true);
-    try {
-      await adminEliminarFarmacia(token, id);
-      setMensaje("Farmacia eliminada");
-      loadFarmacias();
-      setTimeout(() => setMensaje(""), 3000);
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message === "UNAUTHORIZED") { handleUnauthorized(); return; }
-      setMensaje("Error: " + (e instanceof Error ? e.message : "Error desconocido"));
-    } finally {
-      setCargando(false);
     }
   }
 
@@ -635,62 +556,6 @@ export function AdminPanel() {
           </div>
         )}
 
-        {/* Farmacias */}
-        {tab === "farmacias" && (
-          <div className="space-y-3">
-            <div className="flex justify-end">
-              <button
-                onClick={abrirModalCrear}
-                className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-[0_2px_8px_rgba(109,40,217,0.25)] cursor-pointer text-sm"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Nueva farmacia
-              </button>
-            </div>
-
-            {farmacias.length === 0 && (
-              <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-12 text-center text-gray-300 text-sm">
-                No hay farmacias registradas
-              </div>
-            )}
-
-            {farmacias.map((f, i) => (
-              <div
-                key={f.id}
-                className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 animate-fade-in-up"
-                style={{ animationDelay: `${i * 0.05}s` }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800">{f.nombre}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{f.direccion}</p>
-                    <p className="text-xs text-gray-300 mt-1 font-mono">{f.latitud}, {f.longitud}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${f.cantidad > 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
-                      {f.cantidad} uds.
-                    </span>
-                    <button onClick={() => abrirModalEditar(f)} title="Editar"
-                      className="p-2 rounded-xl bg-[#f0f0f8] hover:bg-violet-50 text-gray-400 hover:text-violet-600 transition-all duration-200 cursor-pointer">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
-                      </svg>
-                    </button>
-                    <button onClick={() => handleEliminarFarmacia(f.id)} title="Eliminar"
-                      className="p-2 rounded-xl bg-[#f0f0f8] hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all duration-200 cursor-pointer">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Cartillas */}
         {tab === "puntaje" && (
           <div className="space-y-3">
@@ -1029,55 +894,6 @@ export function AdminPanel() {
 
       </main>
 
-      {/* Modal crear / editar farmacia */}
-      {modalAbierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-md p-6 animate-fade-in-up">
-            <h2 className="text-lg font-bold text-gray-800 mb-5">
-              {farmaciaEditId ? "Editar farmacia" : "Nueva farmacia"}
-            </h2>
-            <form onSubmit={handleSubmitFarmacia} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Nombre</label>
-                <input type="text" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} required
-                  className="w-full bg-[#f9f9fd] rounded-xl px-4 py-2.5 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400/30 transition-all duration-200" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Dirección</label>
-                <input type="text" value={form.direccion} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))} required
-                  className="w-full bg-[#f9f9fd] rounded-xl px-4 py-2.5 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400/30 transition-all duration-200" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Latitud</label>
-                  <input type="number" step="any" value={form.latitud} onChange={e => setForm(p => ({ ...p, latitud: e.target.value }))} required
-                    className="w-full bg-[#f9f9fd] rounded-xl px-4 py-2.5 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400/30 transition-all duration-200" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Longitud</label>
-                  <input type="number" step="any" value={form.longitud} onChange={e => setForm(p => ({ ...p, longitud: e.target.value }))} required
-                    className="w-full bg-[#f9f9fd] rounded-xl px-4 py-2.5 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400/30 transition-all duration-200" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Stock (camisetas)</label>
-                <input type="number" min="0" value={form.cantidad} onChange={e => setForm(p => ({ ...p, cantidad: e.target.value }))} required
-                  className="w-full bg-[#f9f9fd] rounded-xl px-4 py-2.5 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-violet-400/30 transition-all duration-200" />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setModalAbierto(false)}
-                  className="flex-1 bg-[#f0f0f8] hover:bg-[#e8e8f4] text-gray-600 font-semibold py-2.5 rounded-xl transition-all duration-200 cursor-pointer text-sm">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={cargando}
-                  className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 cursor-pointer text-sm shadow-[0_2px_8px_rgba(109,40,217,0.25)]">
-                  {farmaciaEditId ? "Guardar cambios" : "Crear farmacia"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -8,9 +8,6 @@ export class PlanRetiro {
   @Column({ type: "int" })
   cartilla_id!: number;
 
-  @Column({ type: "int" })
-  farmacia_id!: number;
-
   @Column({ type: "date" })
   fecha_retiro!: string;
 

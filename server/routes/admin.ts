@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import { compareSync } from "bcrypt-ts";
 import { UsuarioRepository } from "../repositories/UsuarioRepository";
 import { CartillaRepository } from "../repositories/CartillaRepository";
-import { FarmaciaRepository } from "../repositories/FarmaciaRepository";
 import { PlanRetiroRepository } from "../repositories/PlanRetiroRepository";
 import { PlanRetiro } from "../entities/PlanRetiro";
 import { authMiddleware, JWT_SECRET } from "../middleware/authMiddleware";
@@ -93,69 +92,6 @@ routerAdmin.get("/estadisticas", async (_req: Request, res: Response) => {
   } catch (err) {
     console.error("[admin/estadisticas] Error:", err);
     res.status(500).json({ error: "Error al obtener estadísticas" });
-  }
-});
-
-routerAdmin.get("/farmacias", async (_req: Request, res: Response) => {
-  try {
-    res.json(await FarmaciaRepository.buscarTodas());
-  } catch (err) {
-    console.error("[admin/farmacias] Error:", err);
-    res.status(500).json({ error: "Error al obtener farmacias" });
-  }
-});
-
-routerAdmin.post("/farmacias", async (req: Request, res: Response) => {
-  const { nombre, direccion, latitud, longitud, cantidad } = req.body ?? {};
-  if (!nombre?.trim() || !direccion?.trim() || latitud == null || longitud == null) {
-    res.status(400).json({ error: "Faltan campos requeridos" });
-    return;
-  }
-  try {
-    const farmacia = await FarmaciaRepository.crear({
-      nombre: nombre.trim(),
-      direccion: direccion.trim(),
-      latitud: Number(latitud),
-      longitud: Number(longitud),
-      cantidad: Number(cantidad ?? 0),
-    });
-    res.status(201).json(farmacia);
-  } catch (err) {
-    console.error("[admin/farmacias/crear] Error:", err);
-    res.status(500).json({ error: "Error al crear farmacia" });
-  }
-});
-
-routerAdmin.put("/farmacias/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id!);
-  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
-  const { nombre, direccion, latitud, longitud, cantidad } = req.body ?? {};
-  const updates: Record<string, unknown> = {};
-  if (nombre?.trim())    updates.nombre    = nombre.trim();
-  if (direccion?.trim()) updates.direccion = direccion.trim();
-  if (latitud  != null)  updates.latitud   = Number(latitud);
-  if (longitud != null)  updates.longitud  = Number(longitud);
-  if (cantidad != null)  updates.cantidad  = Number(cantidad);
-  try {
-    const farmacia = await FarmaciaRepository.actualizar(id, updates);
-    if (!farmacia) { res.status(404).json({ error: "Farmacia no encontrada" }); return; }
-    res.json(farmacia);
-  } catch (err) {
-    console.error("[admin/farmacias/actualizar] Error:", err);
-    res.status(500).json({ error: "Error al actualizar farmacia" });
-  }
-});
-
-routerAdmin.delete("/farmacias/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id!);
-  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
-  try {
-    const ok = await FarmaciaRepository.eliminar(id);
-    if (!ok) { res.status(404).json({ error: "Farmacia no encontrada" }); return; }
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("[admin/farmacias/eliminar] Error:", err);
-    res.status(500).json({ error: "Error al eliminar farmacia" });
   }
 });
 

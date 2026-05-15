@@ -23,17 +23,6 @@ export function ConfirmacionRetiro() {
         <div className="px-6 py-6 space-y-4">
           <div className="bg-gray-50 rounded-xl p-4 space-y-3">
             <div className="flex gap-3 items-start">
-              <span className="text-xl">📍</span>
-              <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Farmacia</p>
-                <p className="font-semibold text-gray-800">{retiro.farmacia_nombre}</p>
-                {retiro.farmacia_direccion && (
-                  <p className="text-sm text-gray-500">{retiro.farmacia_direccion}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 items-start">
               <span className="text-xl">📅</span>
               <div>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Fecha y hora</p>

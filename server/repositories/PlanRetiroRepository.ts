@@ -1,7 +1,6 @@
 import { AppDataSource } from "../data-source";
 import { PlanRetiro } from "../entities/PlanRetiro";
 import { Cartilla } from "../entities/Cartilla";
-import { Farmacia } from "../entities/Farmacia";
 
 function horaStr(value: unknown): string {
   if (value instanceof Date) {
@@ -25,7 +24,6 @@ export const PlanRetiroRepository = {
 
   async crear(data: {
     cartilla_id: number;
-    farmacia_id: number;
     fecha_retiro: string;
     hora_retiro: string;
   }): Promise<PlanRetiro> {
@@ -36,7 +34,7 @@ export const PlanRetiroRepository = {
 
   async listarParaAdmin(): Promise<{
     id: number; estado: string; fecha_retiro: string; hora_retiro: string;
-    farmacia_nombre: string; cedula: string; usuario_nombre: string;
+    cedula: string; usuario_nombre: string;
     usuario_apellido: string; telefono: string; puntos: number;
   }[]> {
     const rows: Record<string, unknown>[] = await AppDataSource.query(`
@@ -45,7 +43,6 @@ export const PlanRetiroRepository = {
         r.estado,
         CONVERT(varchar(10), r.fecha_retiro, 23) AS fecha_retiro,
         r.hora_retiro,
-        f.nombre   AS farmacia_nombre,
         u.cedula,
         u.nombre   AS usuario_nombre,
         u.apellido AS usuario_apellido,
@@ -54,7 +51,6 @@ export const PlanRetiroRepository = {
       FROM retiros   r
       INNER JOIN cartillas c ON c.id = r.cartilla_id
       INNER JOIN usuarios  u ON u.id = c.usuario_id
-      INNER JOIN farmacias f ON f.id = r.farmacia_id
       WHERE r.estado != 'cancelado'
       ORDER BY r.id DESC
     `);
@@ -64,7 +60,6 @@ export const PlanRetiroRepository = {
       estado:           String(row.estado),
       fecha_retiro:     String(row.fecha_retiro ?? ""),
       hora_retiro:      horaStr(row.hora_retiro),
-      farmacia_nombre:  String(row.farmacia_nombre ?? ""),
       cedula:           String(row.cedula ?? ""),
       usuario_nombre:   String(row.usuario_nombre ?? ""),
       usuario_apellido: String(row.usuario_apellido ?? ""),
@@ -82,12 +77,6 @@ export const PlanRetiroRepository = {
 
     await repo.update(id, { estado: "entregado" });
     await AppDataSource.getRepository(Cartilla).update(retiro.cartilla_id, { estado: "cerrada" });
-    await AppDataSource.getRepository(Farmacia)
-      .createQueryBuilder()
-      .update()
-      .set({ cantidad: () => "CASE WHEN cantidad > 0 THEN cantidad - 1 ELSE 0 END" })
-      .where("id = :id", { id: retiro.farmacia_id })
-      .execute();
 
     return { ok: true };
   },
@@ -101,12 +90,6 @@ export const PlanRetiroRepository = {
 
     await repo.update(id, { estado: "planificado" });
     await AppDataSource.getRepository(Cartilla).update(retiro.cartilla_id, { estado: "completa" });
-    await AppDataSource.getRepository(Farmacia)
-      .createQueryBuilder()
-      .update()
-      .set({ cantidad: () => "cantidad + 1" })
-      .where("id = :id", { id: retiro.farmacia_id })
-      .execute();
 
     return { ok: true };
   },
@@ -114,7 +97,6 @@ export const PlanRetiroRepository = {
   async actualizar(
     id: number,
     data: {
-      farmacia_id: number;
       fecha_retiro: string;
       hora_retiro: string;
     }
