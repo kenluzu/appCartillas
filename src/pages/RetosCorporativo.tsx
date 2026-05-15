@@ -15,9 +15,8 @@ type FormState = {
   celular_referido: string;
 };
 
-// Reemplaza con el número de WhatsApp del call center (formato: 593XXXXXXXXX)
-const WHATSAPP_NUMERO = "593XXXXXXXXX";
-const WHATSAPP_MENSAJE = "Hola, quiero realizar una compra para el programa *Ponte la 10* de Farmacias Cruz Azul.";
+const WHATSAPP_NUMERO = "593992066000";
+const WHATSAPP_MENSAJE = "Hola, quisiera realizar una compra para el programa *Ponte la 10*.";
 
 type RetoConfig = {
   titulo: string;

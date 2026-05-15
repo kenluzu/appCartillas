@@ -1,5 +1,5 @@
-# ── Etapa 1: build del frontend ──────────────────────────────────────────────
-FROM node:22-alpine AS builder
+# ── Build del frontend ──────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ── Etapa 2: imagen de producción ─────────────────────────────────────────────
-FROM node:22-alpine
+# ── Imagen de producción ─────────────────────────────────────────────
+FROM node:20-alpine
 
 WORKDIR /app
 
